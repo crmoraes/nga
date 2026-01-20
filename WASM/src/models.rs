@@ -71,6 +71,7 @@ pub struct InputOutputType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Property {
     #[serde(rename = "type")]
     pub prop_type: Option<String>,
@@ -78,6 +79,13 @@ pub struct Property {
     pub description: Option<String>,
     pub items: Option<Box<Property>>,
     pub const_value: Option<serde_json::Value>,
+    // Additional fields from Salesforce exports
+    pub is_user_input: Option<bool>,
+    pub is_displayable: Option<bool>,
+    pub is_used_by_planner: Option<bool>,
+    pub complex_data_type_name: Option<String>,
+    #[serde(rename = "default")]
+    pub default_value: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -131,6 +139,7 @@ pub struct ActionProperty {
 pub struct VariableInput {
     pub name: Option<String>,
     pub id: Option<String>,
+    pub label: Option<String>,
     #[serde(rename = "type")]
     pub var_type: Option<String>,
     pub source: Option<String>,
@@ -177,6 +186,7 @@ pub struct ConfigSection {
 pub struct Variable {
     #[serde(rename = "type")]
     pub var_type: String,
+    pub label: Option<String>,
     pub source: Option<String>,
     pub description: String,
 }

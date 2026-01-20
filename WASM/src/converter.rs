@@ -212,6 +212,7 @@ fn extract_variables(input: &AgentforceInput, rules: &Option<ConversionRules>) -
                                 clean_name.clone(),
                                 Variable {
                                     var_type: format!("mutable {}", prop_type),
+                                    label: prop.title.clone(),
                                     source: None,
                                     description: prop
                                         .description
@@ -260,6 +261,7 @@ fn extract_variables(input: &AgentforceInput, rules: &Option<ConversionRules>) -
                                 clean_name.clone(),
                                 Variable {
                                     var_type: format!("{} {}", category, prop_type),
+                                    label: prop.title.clone(),
                                     source,
                                     description: prop
                                         .description
@@ -568,20 +570,26 @@ fn build_detailed_inputs(
             let clean_name = name.replace("Input:", "");
             let prop_type = map_property_type(prop.prop_type.as_deref(), prop, rules);
             
+            // Determine is_required from the required array
+            let is_required = input_type
+                .required
+                .as_ref()
+                .map(|r| r.contains(name))
+                .unwrap_or(false);
+            
+            // Use is_user_input from property if available, otherwise default based on is_required
+            let is_user_input = prop.is_user_input.unwrap_or(is_required);
+            
             inputs.insert(
                 clean_name.clone(),
                 ActionInputDef {
                     input_type: prop_type,
-                    const_value: prop.const_value.clone(),
+                    const_value: prop.const_value.clone().or(prop.default_value.clone()),
                     description: prop.description.clone().or(prop.title.clone()),
                     label: prop.title.clone().or(Some(clean_name)),
-                    is_required: input_type
-                        .required
-                        .as_ref()
-                        .map(|r| r.contains(name))
-                        .unwrap_or(false),
-                    is_user_input: false, // Default, can be set from prop if needed
-                    complex_data_type_name: None, // Can be extracted from prop if needed
+                    is_required,
+                    is_user_input,
+                    complex_data_type_name: prop.complex_data_type_name.clone(),
                 },
             );
         }
@@ -602,15 +610,19 @@ fn build_detailed_outputs(
             let clean_name = name.replace("Output:", "");
             let prop_type = map_property_type(prop.prop_type.as_deref(), prop, rules);
             
+            // Use values from property if available, otherwise use defaults
+            let is_displayable = prop.is_displayable.unwrap_or(false);
+            let is_used_by_planner = prop.is_used_by_planner.unwrap_or(true);
+            
             outputs.insert(
                 clean_name.clone(),
                 ActionOutputDef {
                     output_type: prop_type,
                     description: prop.description.clone().or(prop.title.clone()),
                     label: prop.title.clone().or(Some(clean_name)),
-                    is_displayable: false, // Default
-                    is_used_by_planner: true, // Default
-                    complex_data_type_name: None, // Can be extracted if needed
+                    is_displayable,
+                    is_used_by_planner,
+                    complex_data_type_name: prop.complex_data_type_name.clone(),
                 },
             );
         }
@@ -696,6 +708,7 @@ pub fn convert_simple_format(
                     name.clone(),
                     Variable {
                         var_type: format!("{} {}", category, var_type),
+                        label: v.label.clone(),
                         source,
                         description: v
                             .description

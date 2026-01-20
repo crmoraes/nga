@@ -935,6 +935,93 @@ footer {
     to { transform: rotate(360deg); }
 }
 
+/* ===== Expand/Collapse Button ===== */
+.btn-expand {
+    position: relative;
+}
+
+.btn-expand .icon-collapse {
+    display: none;
+}
+
+.btn-expand.expanded .icon-expand {
+    display: none;
+}
+
+.btn-expand.expanded .icon-collapse {
+    display: block;
+}
+
+/* ===== Expanded Panel State ===== */
+.panel.expanded {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    z-index: 999;
+    border-radius: 0;
+    margin: 0;
+    transform: none !important;
+    animation: expandPanel 0.3s ease-out;
+}
+
+.panel.expanded::before {
+    border-radius: 0;
+}
+
+.panel.expanded .editor-wrapper {
+    flex: 1;
+    height: calc(100vh - 60px);
+}
+
+.panel.expanded textarea {
+    height: 100%;
+}
+
+@keyframes expandPanel {
+    from {
+        opacity: 0.8;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Hide other elements when a panel is expanded */
+body.panel-expanded .editor-container > *:not(.expanded) {
+    display: none;
+}
+
+body.panel-expanded .container {
+    padding: 0;
+    max-width: 100%;
+    height: 100vh;
+}
+
+body.panel-expanded header,
+body.panel-expanded footer,
+body.panel-expanded .status-bar,
+body.panel-expanded .convert-section {
+    display: none;
+}
+
+body.panel-expanded main {
+    height: 100vh;
+}
+
+body.panel-expanded .editor-container {
+    display: block;
+    height: 100vh;
+    gap: 0;
+}
+
 /* ===== Syntax Highlighting ===== */
 .yaml-key {
     color: var(--brand);

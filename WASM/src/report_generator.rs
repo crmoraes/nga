@@ -141,6 +141,79 @@ pub fn analyze_variables_missing_descriptions(variables: &[VariableReport]) -> V
         .collect()
 }
 
+/// Check if a target name appears to be an alphanumeric ID (like a Salesforce record ID)
+/// rather than a human-readable flow API name
+fn is_alphanumeric_id(target_name: &str) -> bool {
+    // Salesforce record IDs are typically 15 or 18 characters with mixed letters and numbers
+    // Pattern: combination of letters and numbers that doesn't look like a standard name
+    // e.g., "3A7x00000004CqWEAU" or "001xx000003DGbYAAW"
+    
+    // Must have both letters and numbers
+    let has_letters = target_name.chars().any(|c| c.is_ascii_alphabetic());
+    let has_numbers = target_name.chars().any(|c| c.is_ascii_digit());
+    
+    if !has_letters || !has_numbers {
+        return false;
+    }
+    
+    // Standard flow names typically use underscores, spaces, or are PascalCase/camelCase
+    // Salesforce IDs don't have underscores or spaces
+    let has_underscore = target_name.contains('_');
+    let has_space = target_name.contains(' ');
+    
+    if has_underscore || has_space {
+        return false;
+    }
+    
+    // Check if it looks like a Salesforce ID pattern (alphanumeric, often 15-18 chars)
+    // but also catch shorter IDs that are clearly not flow names
+    let alphanumeric_only = target_name.chars().all(|c| c.is_ascii_alphanumeric());
+    
+    if !alphanumeric_only {
+        return false;
+    }
+    
+    // Heuristic: if it has consecutive numbers (like "00000") or starts with numbers,
+    // it's likely an ID rather than a flow name
+    let starts_with_number = target_name.chars().next().map_or(false, |c| c.is_ascii_digit());
+    let has_consecutive_numbers = target_name.chars()
+        .collect::<Vec<_>>()
+        .windows(3)
+        .any(|w| w.iter().all(|c| c.is_ascii_digit()));
+    
+    starts_with_number || has_consecutive_numbers
+}
+
+/// Represents a flow action with alphanumeric target name that needs review
+#[derive(Debug, Clone)]
+pub struct FlowActionReview {
+    pub topic_name: String,
+    pub action_name: String,
+    pub target_name: String,
+}
+
+/// Analyze flow actions with alphanumeric target names that may need review
+pub fn analyze_flow_actions_with_alphanumeric_targets(topics: &[TopicReport]) -> Vec<FlowActionReview> {
+    let mut results = Vec::new();
+    
+    for topic in topics {
+        for action in &topic.actions {
+            // Check if action type is "flow" (case insensitive)
+            let is_flow = action.action_type.to_lowercase() == "flow";
+            
+            if is_flow && is_alphanumeric_id(&action.target) {
+                results.push(FlowActionReview {
+                    topic_name: topic.name.clone(),
+                    action_name: action.name.clone(),
+                    target_name: action.target.clone(),
+                });
+            }
+        }
+    }
+    
+    results
+}
+
 // ============================================================================
 // REPORT DATA GENERATION
 // ============================================================================
@@ -452,6 +525,24 @@ fn generate_analysis_notes(
             vars_without_desc.len(),
             vars_without_desc.join(", ")
         ));
+    }
+    
+    // Check for flow actions with alphanumeric target names (likely Salesforce record IDs)
+    let flow_actions_to_review = analyze_flow_actions_with_alphanumeric_targets(topics);
+    if !flow_actions_to_review.is_empty() {
+        notes.push(format!(
+            "- ⚠️ **REVIEW REQUIRED:** {} flow action(s) have alphanumeric target names that appear to be Salesforce record IDs rather than flow API names:",
+            flow_actions_to_review.len()
+        ));
+        for action_review in &flow_actions_to_review {
+            notes.push(format!(
+                "  - **Topic:** `{}` → **Action:** `{}` → **Target:** `{}`",
+                action_review.topic_name,
+                action_review.action_name,
+                action_review.target_name
+            ));
+        }
+        notes.push("  - Please verify these flow references and replace with the correct flow API names if needed.".to_string());
     }
     
     // Conversion metadata notes

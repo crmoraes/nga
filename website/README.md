@@ -548,6 +548,7 @@ Warnings and recommendations:
 - Actions missing descriptions
 - Variables missing descriptions
 - Conversion metadata notes (e.g., variable conversion status)
+- **Flow actions with alphanumeric target names**: When an action has `invocationTargetType` equal to `flow` and the `invocationTargetName` is a combination of numbers and letters (e.g., `3A7x00000004CqWEAU`), the report will flag this for review. These alphanumeric identifiers are typically Salesforce record IDs rather than human-readable flow API names. The report includes the **Topic name** and **Action name** where this occurs, so you can easily locate and verify the correct flow reference.
 
 ### Report Format
 
@@ -922,7 +923,7 @@ Consider adding:
 
 Open Developer Tools (F12) and check the Console tab for:
 - WASM loading status: `WASM module loaded successfully`
-- Rule loading status: `NGA Rules loaded: v2.0.0`
+- Rule loading status: `NGA Rules loaded: v1.0.0`
 - Conversion errors with details
 - WASM initialization errors (if any)
 - CSP violations (if WASM is blocked)

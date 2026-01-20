@@ -34,8 +34,18 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
         for name in var_keys {
             let variable = &nga.variables[name];
             output.push_str(&format!("    {}: {}\n", name, variable.var_type));
-            if let Some(source) = &variable.source {
-                output.push_str(&format!("        source: {}\n", source));
+            // Only output source for linked type variables with non-action sources
+            // (e.g., @MessagingSession.*, @User.* but NOT @action.*)
+            if variable.var_type.starts_with("linked") {
+                if let Some(source) = &variable.source {
+                    if !source.starts_with("@action.") {
+                        output.push_str(&format!("        source: {}\n", source));
+                    }
+                }
+            }
+            // Output label if present
+            if let Some(label) = &variable.label {
+                output.push_str(&format!("        label: \"{}\"\n", label));
             }
             let var_desc = convert_variables_in_text(Some(&variable.description), rules);
             output.push_str(&format!("        description: \"{}\"\n", escape_yaml_string(&var_desc)));
@@ -192,6 +202,64 @@ fn format_detailed_actions(actions: &HashMap<String, Action>, rules: &Option<Con
         let desc = convert_variables_in_text(Some(&action.description), rules);
         output.push_str(&format!("            description: \"{}\"\n", escape_yaml_string(&desc)));
         
+        // Inputs (before target/label per expected format)
+        if let Some(inputs) = &action.inputs {
+            if !inputs.is_empty() {
+                output.push_str("            inputs:\n");
+                let mut input_keys: Vec<_> = inputs.keys().collect();
+                input_keys.sort();
+                for input_name in input_keys {
+                    let input_def = &inputs[input_name];
+                    // No quotes around input name
+                    output.push_str(&format!("                {}: {}\n", input_name, input_def.input_type));
+                    
+                    // Input properties - order: description, label, is_required, complex_data_type_name
+                    if let Some(desc) = &input_def.description {
+                        let input_desc = convert_variables_in_text(Some(desc), rules);
+                        output.push_str(&format!("                    description: \"{}\"\n", escape_yaml_string(&input_desc)));
+                    }
+                    if let Some(label) = &input_def.label {
+                        output.push_str(&format!("                    label: \"{}\"\n", label));
+                    }
+                    output.push_str(&format!("                    is_required: {}\n", format_boolean_value(input_def.is_required)));
+                    if let Some(complex_type) = &input_def.complex_data_type_name {
+                        output.push_str(&format!("                    complex_data_type_name: \"{}\"\n", complex_type));
+                    }
+                }
+            }
+        }
+        
+        // Outputs (before target/label per expected format)
+        if let Some(outputs) = &action.outputs {
+            if !outputs.is_empty() {
+                output.push_str("            outputs:\n");
+                let mut output_keys: Vec<_> = outputs.keys().collect();
+                output_keys.sort();
+                for output_name in output_keys {
+                    let output_def = &outputs[output_name];
+                    // No quotes around output name
+                    output.push_str(&format!("                {}: {}\n", output_name, output_def.output_type));
+                    
+                    // Output properties - order: description, label, complex_data_type_name, is_used_by_planner, is_displayable
+                    if let Some(desc) = &output_def.description {
+                        let output_desc = convert_variables_in_text(Some(desc), rules);
+                        output.push_str(&format!("                    description: \"{}\"\n", escape_yaml_string(&output_desc)));
+                    }
+                    if let Some(label) = &output_def.label {
+                        output.push_str(&format!("                    label: \"{}\"\n", label));
+                    }
+                    if let Some(complex_type) = &output_def.complex_data_type_name {
+                        output.push_str(&format!("                    complex_data_type_name: \"{}\"\n", complex_type));
+                    }
+                    output.push_str(&format!("                    is_used_by_planner: {}\n", format_boolean_value(output_def.is_used_by_planner)));
+                    output.push_str(&format!("                    is_displayable: {}\n", format_boolean_value(output_def.is_displayable)));
+                }
+            }
+        }
+        
+        // Target
+        output.push_str(&format!("            target: \"{}\"\n", action.target));
+        
         // Label
         if let Some(label) = &action.label {
             output.push_str(&format!("            label: \"{}\"\n", label));
@@ -203,67 +271,15 @@ fn format_detailed_actions(actions: &HashMap<String, Action>, rules: &Option<Con
         // Progress indicator
         output.push_str(&format!("            include_in_progress_indicator: {}\n", format_boolean_value(action.include_in_progress_indicator)));
         
-        // Source
-        if let Some(source) = &action.source {
-            output.push_str(&format!("            source: \"{}\"\n", source));
+        // Progress indicator message
+        if let Some(progress_msg) = &action.progress_indicator_message {
+            output.push_str(&format!("            progress_indicator_message: \"{}\"\n", escape_yaml_string(progress_msg)));
         }
         
-        // Target
-        output.push_str(&format!("            target: \"{}\"\n", action.target));
-        
-        // Inputs
-        if let Some(inputs) = &action.inputs {
-            if !inputs.is_empty() {
-                output.push_str("                \n");
-                output.push_str("            inputs:\n");
-                let mut input_keys: Vec<_> = inputs.keys().collect();
-                input_keys.sort();
-                for input_name in input_keys {
-                    let input_def = &inputs[input_name];
-                    output.push_str(&format!("                \"{}\": {}\n", input_name, input_def.input_type));
-                    
-                    // Input properties
-                    if let Some(desc) = &input_def.description {
-                        let input_desc = convert_variables_in_text(Some(desc), rules);
-                        output.push_str(&format!("                    description: \"{}\"\n", escape_yaml_string(&input_desc)));
-                    }
-                    if let Some(label) = &input_def.label {
-                        output.push_str(&format!("                    label: \"{}\"\n", label));
-                    }
-                    output.push_str(&format!("                    is_required: {}\n", format_boolean_value(input_def.is_required)));
-                    output.push_str(&format!("                    is_user_input: {}\n", format_boolean_value(input_def.is_user_input)));
-                    if let Some(complex_type) = &input_def.complex_data_type_name {
-                        output.push_str(&format!("                    complex_data_type_name: \"{}\"\n", complex_type));
-                    }
-                }
-            }
-        }
-        
-        // Outputs
-        if let Some(outputs) = &action.outputs {
-            if !outputs.is_empty() {
-                output.push_str("                \n");
-                output.push_str("            outputs:\n");
-                let mut output_keys: Vec<_> = outputs.keys().collect();
-                output_keys.sort();
-                for output_name in output_keys {
-                    let output_def = &outputs[output_name];
-                    output.push_str(&format!("                \"{}\": {}\n", output_name, output_def.output_type));
-                    
-                    // Output properties
-                    if let Some(desc) = &output_def.description {
-                        let output_desc = convert_variables_in_text(Some(desc), rules);
-                        output.push_str(&format!("                    description: \"{}\"\n", escape_yaml_string(&output_desc)));
-                    }
-                    if let Some(label) = &output_def.label {
-                        output.push_str(&format!("                    label: \"{}\"\n", label));
-                    }
-                    output.push_str(&format!("                    is_displayable: {}\n", format_boolean_value(output_def.is_displayable)));
-                    output.push_str(&format!("                    is_used_by_planner: {}\n", format_boolean_value(output_def.is_used_by_planner)));
-                    if let Some(complex_type) = &output_def.complex_data_type_name {
-                        output.push_str(&format!("                    complex_data_type_name: \"{}\"\n", complex_type));
-                    }
-                }
+        // Source - only include for standardInvocableAction targets
+        if action.target.contains("standardInvocableAction://") {
+            if let Some(source) = &action.source {
+                output.push_str(&format!("            source: \"{}\"\n", source));
             }
         }
     }

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "NGA Agent Script Conversion Rules",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "Rules for converting YAML/JSON input to Salesforce Agent Script format based on https://developer.salesforce.com/docs/ai/agentforce/guide/agent-script.html",
   
   "blocks": {
