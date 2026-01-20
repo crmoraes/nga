@@ -1,0 +1,14 @@
+/home/cmoraes/projects/nga/WASM/target/wasm32-unknown-unknown/release/deps/serde-aaf1d6e0bf981472.d: /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/cmoraes/projects/nga/WASM/target/wasm32-unknown-unknown/release/build/serde-b71da9f8a919bad6/out/private.rs
+
+/home/cmoraes/projects/nga/WASM/target/wasm32-unknown-unknown/release/deps/libserde-aaf1d6e0bf981472.rlib: /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/cmoraes/projects/nga/WASM/target/wasm32-unknown-unknown/release/build/serde-b71da9f8a919bad6/out/private.rs
+
+/home/cmoraes/projects/nga/WASM/target/wasm32-unknown-unknown/release/deps/libserde-aaf1d6e0bf981472.rmeta: /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/cmoraes/projects/nga/WASM/target/wasm32-unknown-unknown/release/build/serde-b71da9f8a919bad6/out/private.rs
+
+/home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/home/cmoraes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/home/cmoraes/projects/nga/WASM/target/wasm32-unknown-unknown/release/build/serde-b71da9f8a919bad6/out/private.rs:
+
+# env-dep:OUT_DIR=/home/cmoraes/projects/nga/WASM/target/wasm32-unknown-unknown/release/build/serde-b71da9f8a919bad6/out

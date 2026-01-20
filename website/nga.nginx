@@ -1,0 +1,111 @@
+# Nginx configuration for NGA YAML Converter website
+# This can be included in your main nginx.conf or used as a separate site configuration
+# 
+# To use as a separate site:
+#   - Copy to /etc/nginx/sites-available/nga
+#   - Create symlink: ln -s /etc/nginx/sites-available/nga /etc/nginx/sites-enabled/
+#   - Test: nginx -t
+#   - Reload: systemctl reload nginx
+#
+# To include in main nginx.conf:
+#   - Add: include /path/to/this/file;
+#   - Or place server block directly in http {} section
+
+server {
+    # Listen on port 80 (HTTP)
+    # Uncomment and configure SSL if you have HTTPS certificates
+    listen 8080;
+    # listen 443 ssl http2;
+    # ssl_certificate /path/to/certificate.crt;
+    # ssl_certificate_key /path/to/private.key;
+    
+    # Server name - update with your domain or IP
+    server_name nga.example.com;  # Change this to your domain or IP
+    
+    # Root directory - update path to your website directory
+    root /home/cmoraes/projects/smartapps/apps/nga/website;
+    
+    # Default index file
+    index index.html;
+    
+    # Logging
+    access_log /var/log/nginx/nga-access.log;
+    error_log /var/log/nginx/nga-error.log;
+    
+    # Character encoding
+    charset utf-8;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    
+    # Content Security Policy (CSP)
+    # Allows scripts from self, jsdelivr CDN, and WASM modules
+    # Note: 'wasm-unsafe-eval' is required for WebAssembly
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self';" always;
+    
+    # HTTP Basic Authentication
+    # Password file location - update path as needed
+    # Create with: htpasswd -c /etc/nginx/.htpasswd username
+    # Add users: htpasswd /etc/nginx/.htpasswd username
+    auth_basic "Restricted Access";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+    
+    # Main location block
+    location / {
+        try_files $uri $uri/ =404;
+    }
+    
+    # Serve static files with appropriate caching (including WASM files)
+    location ~* \.(css|js|json|yaml|yml|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|wasm)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+    
+    # Serve WASM files with proper MIME type
+    location ~* \.(wasm)$ {
+        add_header Content-Type application/wasm;
+        expires 30d;
+        access_log off;
+    }
+    
+    # Specific handling for JSON files
+    location ~* \.json$ {
+        add_header Content-Type application/json;
+        expires 1h;
+    }
+    
+    # Specific handling for YAML files
+    location ~* \.(yaml|yml)$ {
+        add_header Content-Type text/yaml;
+        expires 1h;
+    }
+    
+    # Deny access to hidden files
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    # Deny access to README and other documentation files (optional)
+    # Uncomment if you don't want these files accessible via web
+    # location ~ /(README|\.md)$ {
+    #     deny all;
+    # }
+    
+    # Error pages
+    error_page 404 /index.html;
+    error_page 500 502 503 504 /index.html;
+    
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss application/yaml text/yaml;
+    gzip_disable "msie6";
+}

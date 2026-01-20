@@ -1,0 +1,20 @@
+{
+  "name": "nga-converter",
+  "collaborators": [
+    "Claudio Moraes"
+  ],
+  "description": "NGA YAML Converter - Core conversion logic compiled to WebAssembly",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/claudiomoraes/nga"
+  },
+  "files": [
+    "nga_converter_bg.wasm",
+    "nga_converter.js",
+    "nga_converter.d.ts"
+  ],
+  "browser": "nga_converter.js",
+  "types": "nga_converter.d.ts"
+}
