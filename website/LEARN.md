@@ -152,13 +152,24 @@ Each topic in your agent becomes a separate section:
 - **Topic name** → Cleaned and formatted
 - **Description** → Combined from description and scope fields
 - **Instructions** → All instruction definitions combined
-- **Actions** → All functions converted to actions
+- **Actions** → All functions converted to actions with detailed inputs/outputs
+
+### Action Inputs & Outputs
+
+The converter intelligently handles action inputs and outputs:
+- **Input filtering** → Only inputs where `isUserInput` is `true` are included (internal system parameters are filtered out)
+- **Source field** → Only included when it's a readable API name (e.g., `SvcCopilotTmpl__GetCaseByCaseNumber`), Salesforce IDs are excluded
+- **Complex data types** → Automatically extracted from `lightning:type` or `$ref` fields
+- **Object types** → When an output type is `object` or `list[object]`, `complex_data_type_name` defaults to `lightning__recordInfoType`
 
 ### Variables
 
-Automatically extracted from your functions:
-- **Input variables** → Variables the agent can use
-- **Output variables** → Variables from action results
+Variables are only included in the output when they are **actually referenced** in your agent definition:
+- Variables must be referenced in instructions, descriptions, scopes, or other text fields
+- Reference patterns detected: `{!$VarName}`, `{$VarName}`, `{!VarName}`, `@variables.VarName`
+- Variables that exist in function definitions but are never used are **not** included in the output
+
+> **Note:** This keeps your converted agent clean by only including variables that are actually needed.
 
 ### Language Settings
 
@@ -187,8 +198,23 @@ Specifies supported languages and locales.
 Each topic includes:
 - **Label** - Display name
 - **Description** - What the topic handles
-- **Reasoning** - Instructions for the agent
-- **Actions** - Available actions the agent can take
+- **Reasoning** - Instructions for the agent with action references
+- **Actions** - Detailed action definitions
+
+### Actions Section (within Topics)
+Each action includes:
+- **description** - What the action does
+- **label** - Human-readable name
+- **require_user_confirmation** - Whether user confirmation is needed
+- **include_in_progress_indicator** - Whether to show progress
+- **source** - API name of the source (only for readable names, not Salesforce IDs)
+- **target** - Where the action points (e.g., `flow://FlowName`)
+- **inputs** - Input parameters (only those marked as user inputs)
+  - Quoted parameter names (e.g., `"contactRecord"`)
+  - Type, description, label, is_required, is_user_input, complex_data_type_name
+- **outputs** - Output parameters
+  - Quoted parameter names (e.g., `"caseRecord"`)
+  - Type, description, label, is_displayable, is_used_by_planner, complex_data_type_name
 
 ### Example Output Structure
 
@@ -205,24 +231,57 @@ config:
   description: "Deliver personalized customer interactions..."
 
 variables:
-    query: mutable string
-        description: "A string created by generative AI for search."
+    Glossary: linked string
+        label: "Glossary"
+        description: "Glossary Definitions"
 
 language:
     default_locale: "en_US"
     additional_locales: "es, es_MX"
 
-start_agent general_web_search:
-    label: "General Web Search"
-    description: "Enables the agent to perform real-time web searches..."
+topic case_management:
+    label: "Case Management"
+    description: "Handles customer inquiries related to support cases..."
     
     reasoning:
         instructions: ->
-            | Your job is limited to accessing publicly available information.
-            | If the customer's question is too vague, ask for clarification.
+            | Your job is to help customers retrieve case information.
+            | If the customer is not known, ask for their email address.
         actions:
-            AnswerQuestionsWithKnowledge: @action.standard://streamKnowledgeSearch
-            go_to_escalation: @utils.transition to @topic.escalation
+            GetCaseByCaseNumber: @actions.GetCaseByCaseNumber
+                with contactRecord = ...
+                with caseNumber = ...
+
+    actions:
+        GetCaseByCaseNumber:
+            description: "Returns a case associated with a given contact record and case number."
+            label: "Get Case By Case Number"
+            require_user_confirmation: False
+            include_in_progress_indicator: True
+            source: "SvcCopilotTmpl__GetCaseByCaseNumber"
+            target: "flow://SvcCopilotTmpl__GetCaseByCaseNumber"
+                
+            inputs:
+                "contactRecord": object
+                    description: "Stores the contact record of the customer."
+                    label: "Contact record"
+                    is_required: True
+                    is_user_input: True
+                    complex_data_type_name: "lightning__recordInfoType"
+                "caseNumber": string
+                    description: "Stores the case number provided by the customer."
+                    label: "Case Number"
+                    is_required: True
+                    is_user_input: True
+                    complex_data_type_name: "lightning__textType"
+                
+            outputs:
+                "caseRecord": object
+                    description: "Stores the case record based on the contact record and case number."
+                    label: "Case record"
+                    is_displayable: True
+                    is_used_by_planner: True
+                    complex_data_type_name: "lightning__recordInfoType"
 ```
 
 ---
@@ -328,6 +387,8 @@ The converter automatically creates transitions between all topics, allowing you
 3. **Review the output** - Always review the converted output to ensure everything looks correct
 4. **Check the conversion report** - Use the Conversion Report to verify what was converted and identify any items needing attention
 5. **Save your work** - Download the output file to keep a copy of your converted agent
+6. **Verify variables** - Only variables actually referenced in your agent are included in the output
+7. **Review action inputs** - Some internal system parameters (like `mode`, `retrieverMode`) are automatically filtered out as they're not user inputs
 
 ---
 
@@ -354,6 +415,18 @@ Yes! The output is in YAML format, which is human-readable and easy to edit. You
 ### What happens to my original file?
 
 Nothing! The converter only reads your file - it never modifies or deletes your original data. Your input remains unchanged.
+
+### Why are some variables missing from my output?
+
+The converter only includes variables that are **actually referenced** in your agent's instructions, descriptions, or other text fields. Variables defined in function inputs/outputs but never used in the agent are intentionally excluded to keep your output clean and focused.
+
+### Why are some action inputs missing?
+
+Action inputs that have `isUserInput` set to `false` (like `mode` or `retrieverMode`) are filtered out. These are internal system parameters that don't need to be defined in the AgentScript output. Only user-facing inputs are included.
+
+### Why doesn't my action have a `source` field?
+
+The `source` field is only included when it contains a readable API name (like `SvcCopilotTmpl__GetCaseByCaseNumber`). Salesforce record IDs (like `172Wt00000HG6ShIAL`) are automatically excluded since they're not meaningful in the converted output.
 
 ---
 

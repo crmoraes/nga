@@ -25,6 +25,7 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
     output.push_str(&format!("  developer_name: \"{}\"\n", nga.config.developer_name));
     let config_desc = convert_variables_in_text(Some(&nga.config.description), rules);
     output.push_str(&format!("  description: \"{}\"\n", escape_yaml_string(&config_desc)));
+    output.push_str("\n");
     
     // Variables section
     if !nga.variables.is_empty() {
@@ -202,64 +203,6 @@ fn format_detailed_actions(actions: &HashMap<String, Action>, rules: &Option<Con
         let desc = convert_variables_in_text(Some(&action.description), rules);
         output.push_str(&format!("            description: \"{}\"\n", escape_yaml_string(&desc)));
         
-        // Inputs (before target/label per expected format)
-        if let Some(inputs) = &action.inputs {
-            if !inputs.is_empty() {
-                output.push_str("            inputs:\n");
-                let mut input_keys: Vec<_> = inputs.keys().collect();
-                input_keys.sort();
-                for input_name in input_keys {
-                    let input_def = &inputs[input_name];
-                    // No quotes around input name
-                    output.push_str(&format!("                {}: {}\n", input_name, input_def.input_type));
-                    
-                    // Input properties - order: description, label, is_required, complex_data_type_name
-                    if let Some(desc) = &input_def.description {
-                        let input_desc = convert_variables_in_text(Some(desc), rules);
-                        output.push_str(&format!("                    description: \"{}\"\n", escape_yaml_string(&input_desc)));
-                    }
-                    if let Some(label) = &input_def.label {
-                        output.push_str(&format!("                    label: \"{}\"\n", label));
-                    }
-                    output.push_str(&format!("                    is_required: {}\n", format_boolean_value(input_def.is_required)));
-                    if let Some(complex_type) = &input_def.complex_data_type_name {
-                        output.push_str(&format!("                    complex_data_type_name: \"{}\"\n", complex_type));
-                    }
-                }
-            }
-        }
-        
-        // Outputs (before target/label per expected format)
-        if let Some(outputs) = &action.outputs {
-            if !outputs.is_empty() {
-                output.push_str("            outputs:\n");
-                let mut output_keys: Vec<_> = outputs.keys().collect();
-                output_keys.sort();
-                for output_name in output_keys {
-                    let output_def = &outputs[output_name];
-                    // No quotes around output name
-                    output.push_str(&format!("                {}: {}\n", output_name, output_def.output_type));
-                    
-                    // Output properties - order: description, label, complex_data_type_name, is_used_by_planner, is_displayable
-                    if let Some(desc) = &output_def.description {
-                        let output_desc = convert_variables_in_text(Some(desc), rules);
-                        output.push_str(&format!("                    description: \"{}\"\n", escape_yaml_string(&output_desc)));
-                    }
-                    if let Some(label) = &output_def.label {
-                        output.push_str(&format!("                    label: \"{}\"\n", label));
-                    }
-                    if let Some(complex_type) = &output_def.complex_data_type_name {
-                        output.push_str(&format!("                    complex_data_type_name: \"{}\"\n", complex_type));
-                    }
-                    output.push_str(&format!("                    is_used_by_planner: {}\n", format_boolean_value(output_def.is_used_by_planner)));
-                    output.push_str(&format!("                    is_displayable: {}\n", format_boolean_value(output_def.is_displayable)));
-                }
-            }
-        }
-        
-        // Target
-        output.push_str(&format!("            target: \"{}\"\n", action.target));
-        
         // Label
         if let Some(label) = &action.label {
             output.push_str(&format!("            label: \"{}\"\n", label));
@@ -271,18 +214,123 @@ fn format_detailed_actions(actions: &HashMap<String, Action>, rules: &Option<Con
         // Progress indicator
         output.push_str(&format!("            include_in_progress_indicator: {}\n", format_boolean_value(action.include_in_progress_indicator)));
         
-        // Progress indicator message
+        // Source - only include if it's a readable name (contains underscores), not a Salesforce ID
+        if let Some(source) = &action.source {
+            if is_readable_source_name(source) {
+                output.push_str(&format!("            source: \"{}\"\n", source));
+            }
+        }
+        
+        // Target
+        output.push_str(&format!("            target: \"{}\"\n", action.target));
+        
+        // Progress indicator message (optional, after target)
         if let Some(progress_msg) = &action.progress_indicator_message {
             output.push_str(&format!("            progress_indicator_message: \"{}\"\n", escape_yaml_string(progress_msg)));
         }
         
-        // Source - only include for standardInvocableAction targets
-        if action.target.contains("standardInvocableAction://") {
-            if let Some(source) = &action.source {
-                output.push_str(&format!("            source: \"{}\"\n", source));
+        // Inputs
+        if let Some(inputs) = &action.inputs {
+            if !inputs.is_empty() {
+                output.push_str("                \n");
+                output.push_str("            inputs:\n");
+                let mut input_keys: Vec<_> = inputs.keys().collect();
+                input_keys.sort();
+                for input_name in input_keys {
+                    let input_def = &inputs[input_name];
+                    // Quote input names
+                    output.push_str(&format!("                \"{}\": {}\n", input_name, input_def.input_type));
+                    
+                    // Input properties - order: description, label, is_required, is_user_input, complex_data_type_name
+                    if let Some(desc) = &input_def.description {
+                        let input_desc = convert_variables_in_text(Some(desc), rules);
+                        output.push_str(&format!("                    description: \"{}\"\n", escape_yaml_string(&input_desc)));
+                    }
+                    if let Some(label) = &input_def.label {
+                        output.push_str(&format!("                    label: \"{}\"\n", label));
+                    }
+                    output.push_str(&format!("                    is_required: {}\n", format_boolean_value(input_def.is_required)));
+                    output.push_str(&format!("                    is_user_input: {}\n", format_boolean_value(input_def.is_user_input)));
+                    if let Some(complex_type) = &input_def.complex_data_type_name {
+                        output.push_str(&format!("                    complex_data_type_name: \"{}\"\n", complex_type));
+                    }
+                }
+            }
+        }
+        
+        // Outputs
+        if let Some(outputs) = &action.outputs {
+            if !outputs.is_empty() {
+                output.push_str("                \n");
+                output.push_str("            outputs:\n");
+                let mut output_keys: Vec<_> = outputs.keys().collect();
+                output_keys.sort();
+                for output_name in output_keys {
+                    let output_def = &outputs[output_name];
+                    // Quote output names
+                    output.push_str(&format!("                \"{}\": {}\n", output_name, output_def.output_type));
+                    
+                    // Output properties - order: description, label, is_displayable, is_used_by_planner, complex_data_type_name
+                    if let Some(desc) = &output_def.description {
+                        let output_desc = convert_variables_in_text(Some(desc), rules);
+                        output.push_str(&format!("                    description: \"{}\"\n", escape_yaml_string(&output_desc)));
+                    }
+                    if let Some(label) = &output_def.label {
+                        output.push_str(&format!("                    label: \"{}\"\n", label));
+                    }
+                    output.push_str(&format!("                    is_displayable: {}\n", format_boolean_value(output_def.is_displayable)));
+                    output.push_str(&format!("                    is_used_by_planner: {}\n", format_boolean_value(output_def.is_used_by_planner)));
+                    if let Some(complex_type) = &output_def.complex_data_type_name {
+                        output.push_str(&format!("                    complex_data_type_name: \"{}\"\n", complex_type));
+                    }
+                }
             }
         }
     }
     
     output
+}
+
+/// Check if source is a readable name (API name with underscores) vs a Salesforce ID
+/// Salesforce IDs are typically 15 or 18 alphanumeric characters without underscores
+fn is_readable_source_name(source: &str) -> bool {
+    // If it contains underscores, it's likely an API name
+    if source.contains('_') {
+        return true;
+    }
+    
+    // If it contains spaces, it's a readable name
+    if source.contains(' ') {
+        return true;
+    }
+    
+    // Check if it looks like a Salesforce ID (15 or 18 alphanumeric chars)
+    let len = source.len();
+    if (len == 15 || len == 18) && source.chars().all(|c| c.is_alphanumeric()) {
+        // Additional check: Salesforce IDs typically have a mix of letters and numbers
+        let has_letters = source.chars().any(|c| c.is_alphabetic());
+        let has_numbers = source.chars().any(|c| c.is_numeric());
+        if has_letters && has_numbers {
+            return false; // This looks like a Salesforce ID
+        }
+    }
+    
+    // Default: if it's purely alphanumeric and reasonably short, might be an ID
+    // Check for pattern: starts with numbers or has consecutive digits (common in SF IDs)
+    if source.chars().all(|c| c.is_alphanumeric()) {
+        // Check if it has 3+ consecutive digits (common in Salesforce IDs like "172Wt00000HG6ShIAL")
+        let mut consecutive_digits = 0;
+        for c in source.chars() {
+            if c.is_numeric() {
+                consecutive_digits += 1;
+                if consecutive_digits >= 3 {
+                    return false; // Likely a Salesforce ID
+                }
+            } else {
+                consecutive_digits = 0;
+            }
+        }
+    }
+    
+    true
 }

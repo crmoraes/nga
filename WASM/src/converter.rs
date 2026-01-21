@@ -176,14 +176,76 @@ fn extract_welcome_message(input: &AgentforceInput) -> String {
     format!("Hi, I'm {}. How can I help you today?", label)
 }
 
-/// Extract variables from all plugin functions
+/// Extract only variables that are actually used/referenced in the agent definition
 fn extract_variables(input: &AgentforceInput, rules: &Option<ConversionRules>) -> HashMap<String, Variable> {
     let mut variables = HashMap::new();
     
+    // First, collect all text content where variables might be referenced
+    let mut all_text_content = String::new();
+    
+    // Add planner role and company
+    if let Some(role) = &input.planner_role {
+        all_text_content.push_str(role);
+        all_text_content.push(' ');
+    }
+    if let Some(company) = &input.planner_company {
+        all_text_content.push_str(company);
+        all_text_content.push(' ');
+    }
+    if let Some(desc) = &input.description {
+        all_text_content.push_str(desc);
+        all_text_content.push(' ');
+    }
+    
+    // Collect text from plugins (instructions, descriptions, scopes)
+    if let Some(plugins) = &input.plugins {
+        for plugin in plugins {
+            if let Some(desc) = &plugin.description {
+                all_text_content.push_str(desc);
+                all_text_content.push(' ');
+            }
+            if let Some(scope) = &plugin.scope {
+                all_text_content.push_str(scope);
+                all_text_content.push(' ');
+            }
+            if let Some(instructions) = &plugin.instruction_definitions {
+                for instr in instructions {
+                    if let Some(desc) = &instr.description {
+                        all_text_content.push_str(desc);
+                        all_text_content.push(' ');
+                    }
+                }
+            }
+            // Check function descriptions too
+            if let Some(functions) = &plugin.functions {
+                for func in functions {
+                    if let Some(desc) = &func.description {
+                        all_text_content.push_str(desc);
+                        all_text_content.push(' ');
+                    }
+                }
+            }
+        }
+    }
+    
+    // Find all variable references in the text content
+    // Patterns: {!$VarName}, {$!VarName}, {$VarName}, {!VarName}, @variables.VarName
+    let referenced_vars = find_variable_references(&all_text_content);
+    
+    // If no variables are referenced, return empty
+    if referenced_vars.is_empty() {
+        return variables;
+    }
+    
+    // Now build variable definitions only for referenced variables
+    // Try to find their definitions from function inputs/outputs
     let plugins = match &input.plugins {
         Some(p) => p,
         None => return variables,
     };
+    
+    // Build a map of all available variable definitions from functions
+    let mut available_vars: HashMap<String, (Property, Option<String>, bool)> = HashMap::new(); // (property, func_name, is_output)
     
     for plugin in plugins {
         let functions = match &plugin.functions {
@@ -192,7 +254,14 @@ fn extract_variables(input: &AgentforceInput, rules: &Option<ConversionRules>) -
         };
         
         for func in functions {
-            // Extract input variables
+            let func_name = func
+                .local_dev_name
+                .as_ref()
+                .or(Some(&func.name))
+                .map(|s| s.clone())
+                .unwrap_or_else(|| "unknown".to_string());
+            
+            // Collect input properties
             if let Some(input_type) = &func.input_type {
                 if let Some(properties) = &input_type.properties {
                     for (prop_name, prop) in properties {
@@ -202,32 +271,14 @@ fn extract_variables(input: &AgentforceInput, rules: &Option<ConversionRules>) -
                             .filter(|c| c.is_alphanumeric() || *c == '_')
                             .collect::<String>();
                         
-                        if !clean_name.is_empty() && !variables.contains_key(&clean_name) {
-                            let prop_type = map_property_type(
-                                prop.prop_type.as_deref(),
-                                prop,
-                                rules,
-                            );
-                            variables.insert(
-                                clean_name.clone(),
-                                Variable {
-                                    var_type: format!("mutable {}", prop_type),
-                                    label: prop.title.clone(),
-                                    source: None,
-                                    description: prop
-                                        .description
-                                        .as_ref()
-                                        .or(prop.title.as_ref())
-                                        .map(|s| s.clone())
-                                        .unwrap_or_else(|| format!("Variable for {}", clean_name)),
-                                },
-                            );
+                        if !clean_name.is_empty() && !available_vars.contains_key(&clean_name) {
+                            available_vars.insert(clean_name, (prop.clone(), Some(func_name.clone()), false));
                         }
                     }
                 }
             }
             
-            // Extract output variables - object types are mutable, others are linked
+            // Collect output properties
             if let Some(output_type) = &func.output_type {
                 if let Some(properties) = &output_type.properties {
                     for (prop_name, prop) in properties {
@@ -237,49 +288,8 @@ fn extract_variables(input: &AgentforceInput, rules: &Option<ConversionRules>) -
                             .filter(|c| c.is_alphanumeric() || *c == '_')
                             .collect::<String>();
                         
-                        if !clean_name.is_empty() && !variables.contains_key(&clean_name) {
-                            let prop_type = map_property_type(
-                                prop.prop_type.as_deref(),
-                                prop,
-                                rules,
-                            );
-                            let func_name = func
-                                .local_dev_name
-                                .as_ref()
-                                .or(Some(&func.name))
-                                .map(|s| s.clone())
-                                .unwrap_or_else(|| "unknown".to_string());
-                            
-                            // Object types (including list[object]) should be mutable, not linked
-                            let (category, source) = if prop_type == "object" || prop_type.contains("object") {
-                                ("mutable".to_string(), None)
-                            } else {
-                                ("linked".to_string(), Some(format!("@action.{}.{}", func_name, prop_name)))
-                            };
-                            
-                            variables.insert(
-                                clean_name.clone(),
-                                Variable {
-                                    var_type: format!("{} {}", category, prop_type),
-                                    label: prop.title.clone(),
-                                    source,
-                                    description: prop
-                                        .description
-                                        .as_ref()
-                                        .or(prop.title.as_ref())
-                                        .map(|s| s.clone())
-                                        .unwrap_or_else(|| {
-                                            format!(
-                                                "Output from {}",
-                                                func.label
-                                                    .as_ref()
-                                                    .or(Some(&func.name))
-                                                    .map(|s| s.clone())
-                                                    .unwrap_or_else(|| "unknown".to_string())
-                                            )
-                                        }),
-                                },
-                            );
+                        if !clean_name.is_empty() && !available_vars.contains_key(&clean_name) {
+                            available_vars.insert(clean_name, (prop.clone(), Some(func_name.clone()), true));
                         }
                     }
                 }
@@ -287,7 +297,113 @@ fn extract_variables(input: &AgentforceInput, rules: &Option<ConversionRules>) -
         }
     }
     
+    // Only create variables for those that are actually referenced
+    for var_name in referenced_vars {
+        if variables.contains_key(&var_name) {
+            continue;
+        }
+        
+        if let Some((prop, func_name, is_output)) = available_vars.get(&var_name) {
+            let prop_type = map_property_type(
+                prop.prop_type.as_deref(),
+                prop,
+                rules,
+            );
+            
+            let (category, source) = if *is_output {
+                // Object types (including list[object]) should be mutable, not linked
+                if prop_type == "object" || prop_type.contains("object") {
+                    ("mutable".to_string(), None)
+                } else {
+                    ("linked".to_string(), func_name.as_ref().map(|f| format!("@action.{}.{}", f, var_name)))
+                }
+            } else {
+                ("mutable".to_string(), None)
+            };
+            
+            variables.insert(
+                var_name.clone(),
+                Variable {
+                    var_type: format!("{} {}", category, prop_type),
+                    label: prop.title.clone(),
+                    source,
+                    description: prop
+                        .description
+                        .as_ref()
+                        .or(prop.title.as_ref())
+                        .map(|s| s.clone())
+                        .unwrap_or_else(|| format!("Variable for {}", var_name)),
+                },
+            );
+        } else {
+            // Variable is referenced but not found in function definitions
+            // Create a basic string variable for it
+            variables.insert(
+                var_name.clone(),
+                Variable {
+                    var_type: "mutable string".to_string(),
+                    label: Some(var_name.clone()),
+                    source: None,
+                    description: format!("Variable {}", var_name),
+                },
+            );
+        }
+    }
+    
     variables
+}
+
+/// Find all variable references in text content
+/// Patterns: {!$VarName}, {$!VarName}, {$VarName}, {!VarName}, @variables.VarName
+fn find_variable_references(text: &str) -> Vec<String> {
+    use std::collections::HashSet;
+    let mut refs = HashSet::new();
+    
+    // Pattern 1: {!$VarName}
+    let re1 = regex::Regex::new(r"\{!\$([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
+    for cap in re1.captures_iter(text) {
+        if let Some(m) = cap.get(1) {
+            refs.insert(m.as_str().to_string());
+        }
+    }
+    
+    // Pattern 2: {$!VarName}
+    let re2 = regex::Regex::new(r"\{\$!([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
+    for cap in re2.captures_iter(text) {
+        if let Some(m) = cap.get(1) {
+            refs.insert(m.as_str().to_string());
+        }
+    }
+    
+    // Pattern 3: {$VarName}
+    let re3 = regex::Regex::new(r"\{\$([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
+    for cap in re3.captures_iter(text) {
+        if let Some(m) = cap.get(1) {
+            refs.insert(m.as_str().to_string());
+        }
+    }
+    
+    // Pattern 4: {!VarName} (but not {!@...})
+    let re4 = regex::Regex::new(r"\{!([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
+    for cap in re4.captures_iter(text) {
+        if let Some(m) = cap.get(1) {
+            let var_name = m.as_str();
+            // Skip if it starts with @ (already converted)
+            if !var_name.starts_with('@') {
+                refs.insert(var_name.to_string());
+            }
+        }
+    }
+    
+    // Pattern 5: @variables.VarName
+    let re5 = regex::Regex::new(r"@variables\.([A-Za-z_][A-Za-z0-9_]*)").unwrap();
+    for cap in re5.captures_iter(text) {
+        if let Some(m) = cap.get(1) {
+            refs.insert(m.as_str().to_string());
+        }
+    }
+    
+    refs.into_iter().collect()
 }
 
 /// Map JSON Schema types to NGA types
@@ -567,6 +683,14 @@ fn build_detailed_inputs(
     
     if let Some(properties) = &input_type.properties {
         for (name, prop) in properties {
+            // Use is_user_input from property - skip inputs where is_user_input is explicitly false
+            let is_user_input = prop.is_user_input.unwrap_or(true);
+            
+            // Skip inputs that are not user inputs (like mode, retrieverMode)
+            if !is_user_input {
+                continue;
+            }
+            
             let clean_name = name.replace("Input:", "");
             let prop_type = map_property_type(prop.prop_type.as_deref(), prop, rules);
             
@@ -577,8 +701,13 @@ fn build_detailed_inputs(
                 .map(|r| r.contains(name))
                 .unwrap_or(false);
             
-            // Use is_user_input from property if available, otherwise default based on is_required
-            let is_user_input = prop.is_user_input.unwrap_or(is_required);
+            // Extract complex_data_type_name from lightning:type or $ref
+            let complex_type = prop.complex_data_type_name.clone()
+                .or_else(|| prop.lightning_type.clone())
+                .or_else(|| prop.ref_type.as_ref().map(|r| {
+                    // Extract type name from $ref like "#/$defs/lightning__recordInfoType"
+                    r.split('/').last().unwrap_or(r).to_string()
+                }));
             
             inputs.insert(
                 clean_name.clone(),
@@ -589,7 +718,7 @@ fn build_detailed_inputs(
                     label: prop.title.clone().or(Some(clean_name)),
                     is_required,
                     is_user_input,
-                    complex_data_type_name: prop.complex_data_type_name.clone(),
+                    complex_data_type_name: complex_type,
                 },
             );
         }
@@ -614,6 +743,28 @@ fn build_detailed_outputs(
             let is_displayable = prop.is_displayable.unwrap_or(false);
             let is_used_by_planner = prop.is_used_by_planner.unwrap_or(true);
             
+            // Extract complex_data_type_name based on output type
+            let complex_type = if prop_type == "list[object]" {
+                // For list[object] types, always use lightning__recordInfoType
+                // (overrides lightning__listType from source)
+                Some("lightning__recordInfoType".to_string())
+            } else {
+                // For all other types (including object), extract from source
+                let source_type = prop.complex_data_type_name.clone()
+                    .or_else(|| prop.lightning_type.clone())
+                    .or_else(|| prop.ref_type.as_ref().map(|r| {
+                        // Extract type name from $ref like "#/$defs/lightning__richTextType"
+                        r.split('/').last().unwrap_or(r).to_string()
+                    }));
+                
+                // For plain object types, default to lightning__recordInfoType if no source type
+                if source_type.is_none() && prop_type == "object" {
+                    Some("lightning__recordInfoType".to_string())
+                } else {
+                    source_type
+                }
+            };
+            
             outputs.insert(
                 clean_name.clone(),
                 ActionOutputDef {
@@ -622,7 +773,7 @@ fn build_detailed_outputs(
                     label: prop.title.clone().or(Some(clean_name)),
                     is_displayable,
                     is_used_by_planner,
-                    complex_data_type_name: prop.complex_data_type_name.clone(),
+                    complex_data_type_name: complex_type,
                 },
             );
         }

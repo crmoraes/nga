@@ -84,6 +84,10 @@ pub struct Property {
     pub is_displayable: Option<bool>,
     pub is_used_by_planner: Option<bool>,
     pub complex_data_type_name: Option<String>,
+    #[serde(rename = "lightning:type")]
+    pub lightning_type: Option<String>,
+    #[serde(rename = "$ref")]
+    pub ref_type: Option<String>,
     #[serde(rename = "default")]
     pub default_value: Option<serde_json::Value>,
 }
