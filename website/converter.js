@@ -27,6 +27,12 @@ const VALID_MIME_TYPES = [
 // Store conversion data for report generation
 let conversionData = null;
 
+// Track if user has accepted the disclaimer in this session
+let disclaimerAccepted = false;
+
+// Track if disclaimer content has been loaded
+let disclaimerLoaded = false;
+
 // DOM Elements
 const inputYaml = document.getElementById('inputYaml');
 const outputYaml = document.getElementById('outputYaml');
@@ -83,6 +89,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Initialize Conversion Report modal
     initConversionReportModal();
+    
+    // Initialize Disclaimer modal
+    initDisclaimerModal();
     
     // Initialize expand/collapse functionality
     initExpandCollapse();
@@ -176,6 +185,98 @@ async function loadReadme(container) {
             message: 'Please ensure LEARN.md is in the same directory as this application.',
             link: { href: 'LEARN.md', text: 'Try opening LEARN.md directly' }
         });
+    }
+}
+
+// ============================================================================
+// DISCLAIMER MODAL
+// ============================================================================
+
+/**
+ * Initialize Disclaimer Modal
+ */
+function initDisclaimerModal() {
+    const modal = document.getElementById('disclaimerModal');
+    const acceptBtn = document.getElementById('acceptDisclaimer');
+    const declineBtn = document.getElementById('declineDisclaimer');
+    const modalContent = document.getElementById('disclaimerModalContent');
+    
+    if (!modal || !acceptBtn || !declineBtn || !modalContent) {
+        console.warn('Disclaimer modal elements not found');
+        return;
+    }
+    
+    // Accept button - proceed with conversion
+    acceptBtn.addEventListener('click', () => {
+        disclaimerAccepted = true;
+        closeModal(modal);
+        // Proceed with conversion
+        performConversion();
+    });
+    
+    // Decline button - close modal without converting
+    declineBtn.addEventListener('click', () => {
+        closeModal(modal);
+        setStatus('Conversion cancelled - disclaimer not accepted', 'info');
+    });
+    
+    // Close modal on overlay click (same as decline)
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal(modal);
+            setStatus('Conversion cancelled - disclaimer not accepted', 'info');
+        }
+    });
+    
+    // Close modal on Escape key (same as decline)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal(modal);
+            setStatus('Conversion cancelled - disclaimer not accepted', 'info');
+        }
+    });
+}
+
+/**
+ * Load and display disclaimer in modal
+ */
+async function loadDisclaimer(container) {
+    try {
+        const response = await fetch('DISCLAIMER.md');
+        if (!response.ok) throw new Error(`Failed to load disclaimer: ${response.status}`);
+        
+        const markdown = await response.text();
+        renderMarkdownToContainer(markdown, container);
+        disclaimerLoaded = true;
+    } catch (error) {
+        console.error('Error loading disclaimer:', error);
+        container.innerHTML = createErrorMessage({
+            title: 'Unable to Load Disclaimer',
+            message: 'Please ensure DISCLAIMER.md is in the same directory as this application.',
+            iconColor: 'var(--warn)'
+        });
+    }
+}
+
+/**
+ * Show disclaimer modal
+ * @returns {Promise} Resolves when modal is shown and content is loaded
+ */
+async function showDisclaimerModal() {
+    const modal = document.getElementById('disclaimerModal');
+    const modalContent = document.getElementById('disclaimerModalContent');
+    
+    if (!modal || !modalContent) {
+        console.error('Disclaimer modal not found');
+        return;
+    }
+    
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Load disclaimer content if not already loaded
+    if (!disclaimerLoaded) {
+        await loadDisclaimer(modalContent);
     }
 }
 
@@ -661,6 +762,9 @@ function downloadOutput() {
 // MAIN CONVERSION LOGIC
 // ============================================================================
 
+/**
+ * Entry point for conversion - shows disclaimer if not yet accepted
+ */
 async function convert() {
     const input = inputYaml.value.trim();
     
@@ -673,6 +777,27 @@ async function convert() {
     if (input.length > MAX_TEXT_LENGTH) {
         setStatus(`Input too large. Maximum: ${(MAX_TEXT_LENGTH / 1024 / 1024).toFixed(0)}MB`, 'error');
         showToast('Input exceeds size limit');
+        return;
+    }
+    
+    // If disclaimer not yet accepted, show it first
+    if (!disclaimerAccepted) {
+        await showDisclaimerModal();
+        return;
+    }
+    
+    // Disclaimer already accepted, proceed with conversion
+    performConversion();
+}
+
+/**
+ * Perform the actual conversion (called after disclaimer is accepted)
+ */
+async function performConversion() {
+    const input = inputYaml.value.trim();
+    
+    if (!input) {
+        setStatus('Please enter YAML or JSON to convert', 'error');
         return;
     }
     

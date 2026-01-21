@@ -8,15 +8,12 @@ Welcome! This tool helps you convert your Salesforce Agentforce agent configurat
 
 ## What Is This Tool?
 
-The Agentforce AgentScript Interpreter transforms your agent definitions from JSON or YAML format into the AgentScript format used by Agentforce Builder. Think of it as a translator that converts your agent configuration into a more readable and manageable format.
+The Agentforce AgentScript Interpreter transforms your agent definitions from JSON format into the AgentScript format used by Agentforce Builder. Think of it as a translator that interpret your agent configuration into a more readable and manageable format.
 
 ### Why Use It?
 
-- **Convert existing agents** to the new script-based format
-- **Review agent logic** in a clear, readable YAML format
+- **Interpret existing agents** into the new script-based format
 - **Understand agent structure** and how topics flow together
-- **Migrate agents** between environments
-- **Edit and modify** agent behavior more easily
 
 ---
 
@@ -52,8 +49,11 @@ You have three ways to provide your agent configuration:
 Once your input is loaded:
 
 - Click the **Convert** button (or press `Ctrl+Enter` on your keyboard)
-- The converter will automatically detect your input format
-- The converted output will appear in the right panel
+- **First-time conversion:** A disclaimer will appear that you must accept before proceeding
+- Once accepted, the interpreter will automatically detect your input format
+- The generated output will appear in the right panel
+
+> **Note:** The disclaimer only needs to be accepted once per session. Subsequent conversions will proceed immediately.
 
 ### Step 3: Export Your Result
 
@@ -67,11 +67,25 @@ After conversion, you can:
 
 ---
 
+## ⚠️ What NEEDS Attention!
+
+After using the interpreter output, the following items require **manual action** in the new Agentforce Builder:
+
+| Item | What You Need to Do |
+|------|---------------------|
+| **Flow Actions** | Custom actions that call Flows will show the **Flow record ID** (not the API name) in the output. You must **manually re-select the Flow** for each action in Agentforce Builder. |
+| **Context Filters** | Context Filters are **NOT converted**. Review your original Context Filter logic and implement it using Agentforce Builder's **deterministic features** if needed. |
+| **Data Library** | Data Library assignments are **NOT included**. You must **manually assign the Data Library** in Agentforce Builder if your agent requires one. |
+
+> **Tip:** Use the Conversion Report to identify all Flow actions that may need attention.
+
+---
+
 ## What Input Formats Are Supported?
 
-The converter recognizes three types of input formats:
+The interpreter recognizes three types of input formats:
 
-### 1. Salesforce Agentforce Export (Most Common)
+### Salesforce Agentforce Export (Most Common)
 
 This is the standard format exported from Salesforce Agentforce. It contains a `plugins` array with your agent topics and functions.
 
@@ -99,37 +113,15 @@ This is the standard format exported from Salesforce Agentforce. It contains a `
 }
 ```
 
-### 2. Simple Topics Format
+### Generic Format
 
-A simplified format that's easier to read and edit manually.
-
-**What it looks like:**
-```yaml
-name: "My Agent"
-label: "My Custom Agent"
-description: "Agent description"
-welcome_message: "Hello! How can I help?"
-locale: "en_US"
-
-topics:
-  - name: greeting
-    label: "Greeting"
-    description: "Handle greetings"
-    instructions: "Welcome the user warmly."
-    actions:
-      - name: go_to_support
-        target: support
-```
-
-### 3. Generic Format
-
-Basic key-value pairs. The converter will create a default agent structure from this.
+Basic key-value pairs. The interpreter will create a default agent structure from this.
 
 ---
 
 ## What Gets Converted?
 
-The converter transforms your agent configuration into several sections:
+The interpreter transforms your agent configuration into several sections:
 
 ### System Instructions
 
@@ -156,7 +148,7 @@ Each topic in your agent becomes a separate section:
 
 ### Action Inputs & Outputs
 
-The converter intelligently handles action inputs and outputs:
+The interpreter intelligently handles action inputs and outputs:
 - **Input filtering** → Only inputs where `isUserInput` is `true` are included (internal system parameters are filtered out)
 - **Source field** → Only included when it's a readable API name (e.g., `SvcCopilotTmpl__GetCaseByCaseNumber`), Salesforce IDs are excluded
 - **Complex data types** → Automatically extracted from `lightning:type` or `$ref` fields
@@ -180,7 +172,7 @@ Variables are only included in the output when they are **actually referenced** 
 
 ## Understanding the Output
 
-The converted output follows the AgentScript format, which is organized into clear sections:
+The generated output follows the AgentScript format, which is organized into clear sections:
 
 ### System Section
 Defines the agent's core behavior and instructions.
@@ -335,7 +327,7 @@ This helps you understand what variables your agent can use and where they come 
 
 #### 4. Variables in Instructions (Requires Review)
 
-If the converter found variables in your instructions that needed conversion:
+If the interpreter found variables in your instructions that needed conversion:
 - **Warning message** - Alerts you that variables were automatically converted
 - **List of variables** - Shows all variables that were found and converted
 - **Action required** - Reminds you to review these conversions
@@ -350,6 +342,24 @@ Helpful warnings and recommendations:
 - **Conversion notes** - Important information about the conversion process
 
 These notes help you identify areas that might need attention or improvement.
+
+---
+
+## Important Disclaimer
+
+Before your first conversion in each session, a disclaimer will be displayed that requires your acceptance. This disclaimer outlines important information about the conversion process:
+
+- The conversion is automated and based on best-effort interpretation
+- The generated output must be thoroughly reviewed, validated, and tested
+- You are responsible for reviewing agent topics, actions, execution logic, and dependencies
+- No guarantee of functional equivalence between original and converted agents
+
+**To proceed with conversion:**
+1. Read the disclaimer carefully
+2. Click **Accept and Start Conversion** to proceed
+3. Click **Decline** or press **Escape** to cancel
+
+> **Note:** The disclaimer acceptance is valid for the current browser session. You won't need to accept it again until you refresh the page or close the browser.
 
 ---
 
@@ -368,7 +378,7 @@ You'll see a notification when this happens.
 
 ### Automatic Topic Generation
 
-The converter automatically adds essential topics if they're missing from your input:
+The interpreter automatically adds essential topics if they're missing from your input:
 
 - **Escalation topic** - For transferring to human agents
 - **Off-topic topic** - For handling unrelated questions
@@ -376,7 +386,7 @@ The converter automatically adds essential topics if they're missing from your i
 
 ### Topic Transitions
 
-The converter automatically creates transitions between all topics, allowing your agent to move between different conversation topics smoothly.
+The interpreter automatically creates transitions between all topics, allowing your agent to move between different conversation topics smoothly.
 
 ---
 
@@ -396,7 +406,7 @@ The converter automatically creates transitions between all topics, allowing you
 
 ### What if my file is too large?
 
-The converter accepts files up to 5MB. If your file is larger, consider:
+The interpreter accepts files up to 5MB. If your file is larger, consider:
 - Splitting your agent into smaller configurations
 - Removing unnecessary data from your export
 - Using text input instead (up to 10MB)
@@ -414,11 +424,11 @@ Yes! The output is in YAML format, which is human-readable and easy to edit. You
 
 ### What happens to my original file?
 
-Nothing! The converter only reads your file - it never modifies or deletes your original data. Your input remains unchanged.
+Nothing! The interpreter only reads your file - it never modifies or deletes your original data. Your input remains unchanged.
 
 ### Why are some variables missing from my output?
 
-The converter only includes variables that are **actually referenced** in your agent's instructions, descriptions, or other text fields. Variables defined in function inputs/outputs but never used in the agent are intentionally excluded to keep your output clean and focused.
+The interpreter only includes variables that are **actually referenced** in your agent's instructions, descriptions, or other text fields. Variables defined in function inputs/outputs but never used in the agent are intentionally excluded to keep your output clean and focused.
 
 ### Why are some action inputs missing?
 

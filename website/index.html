@@ -45,7 +45,7 @@
                     <span>Learn More</span>
                 </button>
             </div>
-            <p class="subtitle">Transform your JSON/YAML into the Next Generation Agent format</p>
+            <p class="subtitle">Transform your JSON into the Next Generation Agent format</p>
         </header>
 
         <main>
@@ -254,6 +254,32 @@
                     <div class="spinner"></div>
                     <p>Generating report...</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disclaimer Modal -->
+    <div class="modal-overlay" id="disclaimerModal">
+        <div class="modal disclaimer-modal">
+            <div class="modal-header disclaimer-header">
+                <h2>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    Important Disclaimer
+                </h2>
+            </div>
+            <div class="modal-content disclaimer-content" id="disclaimerModalContent">
+                <div class="modal-loading">
+                    <div class="spinner"></div>
+                    <p>Loading disclaimer...</p>
+                </div>
+            </div>
+            <div class="modal-footer disclaimer-footer">
+                <button class="btn-decline" id="declineDisclaimer">Decline</button>
+                <button class="btn-accept" id="acceptDisclaimer">Accept and Start Conversion</button>
             </div>
         </div>
     </div>
