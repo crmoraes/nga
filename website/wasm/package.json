@@ -3,7 +3,7 @@
   "collaborators": [
     "Claudio Moraes"
   ],
-  "description": "NGA YAML Converter - Core conversion logic compiled to WebAssembly",
+  "description": "NGA YAML Interpreter - Core conversion logic compiled to WebAssembly",
   "version": "0.1.0",
   "license": "MIT OR Apache-2.0",
   "repository": {

@@ -1,4 +1,4 @@
-# NGA Converter - WebAssembly Module
+# NGA Interpreter - WebAssembly Module
 
 This directory contains the Rust implementation of the core conversion logic, compiled to WebAssembly for better code protection and performance.
 

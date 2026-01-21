@@ -1,4 +1,4 @@
-# Agentforce AgentScript Converter - User Guide
+# Agentforce AgentScript Interpreter - User Guide
 
 Welcome! This tool helps you convert your Salesforce Agentforce agent configurations into the **AgentScript format** - a readable, YAML-based format that makes it easy to understand and modify your AI agents.
 
@@ -8,7 +8,7 @@ Welcome! This tool helps you convert your Salesforce Agentforce agent configurat
 
 ## What Is This Tool?
 
-The Agentforce AgentScript Converter transforms your agent definitions from JSON or YAML format into the AgentScript format used by Agentforce Builder. Think of it as a translator that converts your agent configuration into a more readable and manageable format.
+The Agentforce AgentScript Interpreter transforms your agent definitions from JSON or YAML format into the AgentScript format used by Agentforce Builder. Think of it as a translator that converts your agent configuration into a more readable and manageable format.
 
 ### Why Use It?
 
@@ -20,7 +20,7 @@ The Agentforce AgentScript Converter transforms your agent definitions from JSON
 
 ---
 
-## How to Use the Converter
+## How to Use the Interpreter
 
 ### Getting Your Agent Configuration
 

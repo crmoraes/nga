@@ -1,4 +1,4 @@
-# NGA YAML Converter
+# NGA YAML Interpreter
 
 A web-based tool for converting Salesforce Agentforce agent definitions (JSON/YAML) into the **Next Generation Agent (NGA) Script format**.
 
@@ -26,7 +26,7 @@ A web-based tool for converting Salesforce Agentforce agent definitions (JSON/YA
 
 ## Overview
 
-The NGA YAML Converter transforms Salesforce Agentforce agent exports into the Agent Script format used by Agentforce Builder. This enables developers to:
+The NGA YAML Interpreter transforms Salesforce Agentforce agent exports into the Agent Script format used by Agentforce Builder. This enables developers to:
 
 - Convert existing agent configurations to the new script-based format
 - Migrate agents between environments

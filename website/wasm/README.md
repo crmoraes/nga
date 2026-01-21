@@ -1,4 +1,4 @@
-# NGA Converter - WebAssembly Module
+# NGA Interpreter - WebAssembly Module
 
 This directory contains the Rust implementation of the core conversion logic, compiled to WebAssembly for better code protection and performance.
 
@@ -59,10 +59,10 @@ WASM/
 ├── Cargo.toml              # Rust project configuration
 ├── src/
 │   ├── lib.rs              # WASM entry point and exports
-│   ├── models.rs           # Data structures
-│   ├── converter.rs        # Core conversion logic
-│   ├── yaml_generator.rs   # YAML output generation
-│   ├── variable_processor.rs   # Variable conversion
+│   ├── models.rs           # Data structures (input/output models, rules)
+│   ├── converter.rs        # Core conversion logic (variable extraction, action filtering)
+│   ├── yaml_generator.rs   # YAML output generation (formatting, field ordering)
+│   ├── variable_processor.rs   # Variable pattern detection and conversion
 │   ├── report_generator.rs # Conversion report generation
 │   └── helpers.rs          # Utility functions
 └── pkg/                    # Generated WASM package (after build)
@@ -70,6 +70,14 @@ WASM/
     ├── nga_converter_bg.wasm
     └── ...
 ```
+
+### Key Model Fields (models.rs)
+
+The `Property` struct captures Salesforce-specific fields:
+- `lightning_type` - Maps from `lightning:type` in JSON (e.g., `lightning__richTextType`)
+- `ref_type` - Maps from `$ref` in JSON (e.g., `#/$defs/lightning__recordInfoType`)
+- `is_user_input` - From `copilotAction:isUserInput` (used for input filtering)
+- `is_displayable`, `is_used_by_planner` - Output display properties
 
 ## Integration
 
@@ -188,6 +196,53 @@ When detected, the report includes:
 | `analyze_actions_missing_descriptions` | Count actions without descriptions |
 | `analyze_variables_missing_descriptions` | Find variables without descriptions |
 | `analyze_flow_actions_with_alphanumeric_targets` | Find flow actions needing review |
+
+---
+
+## Conversion Logic Details
+
+The `converter.rs` module implements several intelligent conversion behaviors:
+
+### Variable Extraction
+
+Variables are only included in the output when **actually referenced** in the agent definition:
+- Scans all text content (instructions, descriptions, scopes) for variable references
+- Detects patterns: `{!$VarName}`, `{$VarName}`, `{!VarName}`, `@variables.VarName`
+- Variables from function inputs/outputs that are never used are excluded
+- Keeps the output clean by only including necessary variables
+
+### Action Input Filtering
+
+Action inputs are filtered based on the `copilotAction:isUserInput` field:
+- Only inputs where `isUserInput` is `true` are included
+- Internal system parameters (like `mode`, `retrieverMode`) are automatically excluded
+- This ensures only user-facing inputs appear in the converted output
+
+### Source Field Filtering
+
+The `source` field in actions is conditionally included:
+- **Included**: Readable API names with underscores (e.g., `SvcCopilotTmpl__GetCaseByCaseNumber`)
+- **Excluded**: Salesforce record IDs (e.g., `172Wt00000HG6ShIAL`)
+- Detection uses pattern matching: length check, alphanumeric-only, consecutive digits
+
+### Complex Data Type Name Logic
+
+The `complex_data_type_name` field is set based on output type:
+
+| Output Type | complex_data_type_name |
+|-------------|----------------------|
+| `list[object]` | Always `lightning__recordInfoType` (overrides `lightning__listType`) |
+| `object` | Preserves source type (e.g., `lightning__richTextType`) or defaults to `lightning__recordInfoType` |
+| Other types | Extracted from `lightning:type` or `$ref` fields |
+
+### YAML Output Format
+
+The `yaml_generator.rs` module formats actions with:
+- Quoted input/output parameter names (e.g., `"contactRecord"`)
+- Field order: description → label → require_user_confirmation → include_in_progress_indicator → source → target → inputs → outputs
+- Input fields: description, label, is_required, is_user_input, complex_data_type_name
+- Output fields: description, label, is_displayable, is_used_by_planner, complex_data_type_name
+- Proper section spacing (empty lines between config and variables)
 
 ---
 
