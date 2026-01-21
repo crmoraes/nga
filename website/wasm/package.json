@@ -13,7 +13,9 @@
   "files": [
     "nga_converter_bg.wasm",
     "nga_converter.js",
-    "nga_converter.d.ts"
+    "nga_converter.d.ts",
+    "LICENSE-APACHE",
+    "LICENSE-MIT"
   ],
   "browser": "nga_converter.js",
   "types": "nga_converter.d.ts"

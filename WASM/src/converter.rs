@@ -499,6 +499,19 @@ fn map_property_type(
         .unwrap_or(default_type)
 }
 
+/// Derive complex_data_type_name from property type
+/// This maps NGA property types to their corresponding lightning type names
+fn derive_complex_data_type_name(prop_type: &str) -> Option<String> {
+    match prop_type {
+        "string" => Some("lightning__textType".to_string()),
+        "number" => Some("lightning__numberType".to_string()),
+        "boolean" => Some("lightning__booleanType".to_string()),
+        "object" => Some("lightning__recordInfoType".to_string()),
+        t if t.starts_with("list[") => Some("lightning__recordInfoType".to_string()),
+        _ => None,
+    }
+}
+
 /// Convert a plugin to an NGA topic
 pub fn convert_plugin_to_topic(
     plugin: &Plugin,
@@ -983,16 +996,26 @@ fn convert_simple_actions_detailed(
             if let Some(inputs) = &action.inputs {
                 let mut nga_inputs = HashMap::new();
                 for (input_name, input_def) in inputs {
+                    let input_type = input_def.prop_type.as_deref().unwrap_or("string").to_string();
+                    
+                    // Determine complex_data_type_name:
+                    // 1. Check complex_data_type_name field first
+                    // 2. Fall back to complex_type field
+                    // 3. Derive from the property type as last resort
+                    let complex_type_name = input_def.complex_data_type_name.clone()
+                        .or_else(|| input_def.complex_type.clone())
+                        .or_else(|| derive_complex_data_type_name(&input_type));
+                    
                     nga_inputs.insert(
                         input_name.clone(),
                         ActionInputDef {
-                            input_type: input_def.prop_type.as_deref().unwrap_or("string").to_string(),
+                            input_type,
                             const_value: input_def.default.clone(),
                             description: input_def.description.clone(),
                             label: input_def.label.clone().or(Some(input_name.clone())),
                             is_required: input_def.required.unwrap_or(false),
                             is_user_input: input_def.is_user_input.unwrap_or(true),
-                            complex_data_type_name: input_def.complex_type.clone(),
+                            complex_data_type_name: complex_type_name,
                         },
                     );
                 }
@@ -1003,15 +1026,25 @@ fn convert_simple_actions_detailed(
             if let Some(outputs) = &action.outputs {
                 let mut nga_outputs = HashMap::new();
                 for (output_name, output_def) in outputs {
+                    let output_type = output_def.prop_type.as_deref().unwrap_or("string").to_string();
+                    
+                    // Determine complex_data_type_name:
+                    // 1. Check complex_data_type_name field first
+                    // 2. Fall back to complex_type field
+                    // 3. Derive from the property type as last resort
+                    let complex_type_name = output_def.complex_data_type_name.clone()
+                        .or_else(|| output_def.complex_type.clone())
+                        .or_else(|| derive_complex_data_type_name(&output_type));
+                    
                     nga_outputs.insert(
                         output_name.clone(),
                         ActionOutputDef {
-                            output_type: output_def.prop_type.as_deref().unwrap_or("string").to_string(),
+                            output_type,
                             description: output_def.description.clone(),
                             label: output_def.label.clone().or(Some(output_name.clone())),
                             is_displayable: output_def.is_displayable.unwrap_or(false),
                             is_used_by_planner: output_def.is_used_by_planner.unwrap_or(true),
-                            complex_data_type_name: output_def.complex_type.clone(),
+                            complex_data_type_name: complex_type_name,
                         },
                     );
                 }
