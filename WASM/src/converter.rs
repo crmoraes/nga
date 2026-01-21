@@ -1,7 +1,38 @@
 use std::collections::HashMap;
+use once_cell::sync::Lazy;
+use regex::Regex;
 use crate::models::*;
 use crate::helpers::*;
 use crate::variable_processor::*;
+
+// ============================================================================
+// STATIC REGEX PATTERNS (compiled once at startup)
+// ============================================================================
+
+/// Pattern 1: {!$VarName}
+static VAR_REF_PATTERN_1: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\{!\$([A-Za-z_][A-Za-z0-9_]*)\}").expect("Invalid regex pattern for VAR_REF_PATTERN_1")
+});
+
+/// Pattern 2: {$!VarName}
+static VAR_REF_PATTERN_2: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\{\$!([A-Za-z_][A-Za-z0-9_]*)\}").expect("Invalid regex pattern for VAR_REF_PATTERN_2")
+});
+
+/// Pattern 3: {$VarName}
+static VAR_REF_PATTERN_3: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\{\$([A-Za-z_][A-Za-z0-9_]*)\}").expect("Invalid regex pattern for VAR_REF_PATTERN_3")
+});
+
+/// Pattern 4: {!VarName} (but not {!@...})
+static VAR_REF_PATTERN_4: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\{!([A-Za-z_][A-Za-z0-9_]*)\}").expect("Invalid regex pattern for VAR_REF_PATTERN_4")
+});
+
+/// Pattern 5: @variables.VarName
+static VAR_REF_PATTERN_5: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"@variables\.([A-Za-z_][A-Za-z0-9_]*)").expect("Invalid regex pattern for VAR_REF_PATTERN_5")
+});
 
 /// Detect input format and convert accordingly
 pub fn detect_and_convert(input: &AgentforceInput, rules: &Option<ConversionRules>) -> Result<NGAOutput, String> {
@@ -41,8 +72,7 @@ pub fn convert_agentforce_format(input: &AgentforceInput, rules: &Option<Convers
             agent_label: input
                 .label
                 .as_ref()
-                .or(input.name.as_ref())
-                .map(|s| s.clone())
+                .or(input.name.as_ref()).cloned()
                 .unwrap_or_else(|| "Agentforce Service Agent".to_string()),
             developer_name: generate_developer_name(
                 input
@@ -56,9 +86,7 @@ pub fn convert_agentforce_format(input: &AgentforceInput, rules: &Option<Convers
         variables: extract_variables(input, rules),
         language: LanguageSection {
             default_locale: input
-                .locale
-                .as_ref()
-                .map(|s| s.clone())
+                .locale.clone()
                 .unwrap_or_else(|| get_default_language_values().0),
             additional_locales: format_locales(input.secondary_locales.as_ref()),
             all_additional_locales: get_default_language_values().1,
@@ -169,8 +197,7 @@ fn extract_welcome_message(input: &AgentforceInput) -> String {
     let label = input
         .label
         .as_ref()
-        .or(input.name.as_ref())
-        .map(|s| s.clone())
+        .or(input.name.as_ref()).cloned()
         .unwrap_or_else(|| "AI Assistant".to_string());
     
     format!("Hi, I'm {}. How can I help you today?", label)
@@ -257,8 +284,7 @@ fn extract_variables(input: &AgentforceInput, rules: &Option<ConversionRules>) -
             let func_name = func
                 .local_dev_name
                 .as_ref()
-                .or(Some(&func.name))
-                .map(|s| s.clone())
+                .or(Some(&func.name)).cloned()
                 .unwrap_or_else(|| "unknown".to_string());
             
             // Collect input properties
@@ -330,8 +356,7 @@ fn extract_variables(input: &AgentforceInput, rules: &Option<ConversionRules>) -
                     description: prop
                         .description
                         .as_ref()
-                        .or(prop.title.as_ref())
-                        .map(|s| s.clone())
+                        .or(prop.title.as_ref()).cloned()
                         .unwrap_or_else(|| format!("Variable for {}", var_name)),
                 },
             );
@@ -359,33 +384,29 @@ fn find_variable_references(text: &str) -> Vec<String> {
     use std::collections::HashSet;
     let mut refs = HashSet::new();
     
-    // Pattern 1: {!$VarName}
-    let re1 = regex::Regex::new(r"\{!\$([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
-    for cap in re1.captures_iter(text) {
+    // Pattern 1: {!$VarName} - using pre-compiled regex
+    for cap in VAR_REF_PATTERN_1.captures_iter(text) {
         if let Some(m) = cap.get(1) {
             refs.insert(m.as_str().to_string());
         }
     }
     
-    // Pattern 2: {$!VarName}
-    let re2 = regex::Regex::new(r"\{\$!([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
-    for cap in re2.captures_iter(text) {
+    // Pattern 2: {$!VarName} - using pre-compiled regex
+    for cap in VAR_REF_PATTERN_2.captures_iter(text) {
         if let Some(m) = cap.get(1) {
             refs.insert(m.as_str().to_string());
         }
     }
     
-    // Pattern 3: {$VarName}
-    let re3 = regex::Regex::new(r"\{\$([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
-    for cap in re3.captures_iter(text) {
+    // Pattern 3: {$VarName} - using pre-compiled regex
+    for cap in VAR_REF_PATTERN_3.captures_iter(text) {
         if let Some(m) = cap.get(1) {
             refs.insert(m.as_str().to_string());
         }
     }
     
-    // Pattern 4: {!VarName} (but not {!@...})
-    let re4 = regex::Regex::new(r"\{!([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
-    for cap in re4.captures_iter(text) {
+    // Pattern 4: {!VarName} (but not {!@...}) - using pre-compiled regex
+    for cap in VAR_REF_PATTERN_4.captures_iter(text) {
         if let Some(m) = cap.get(1) {
             let var_name = m.as_str();
             // Skip if it starts with @ (already converted)
@@ -395,9 +416,8 @@ fn find_variable_references(text: &str) -> Vec<String> {
         }
     }
     
-    // Pattern 5: @variables.VarName
-    let re5 = regex::Regex::new(r"@variables\.([A-Za-z_][A-Za-z0-9_]*)").unwrap();
-    for cap in re5.captures_iter(text) {
+    // Pattern 5: @variables.VarName - using pre-compiled regex
+    for cap in VAR_REF_PATTERN_5.captures_iter(text) {
         if let Some(m) = cap.get(1) {
             refs.insert(m.as_str().to_string());
         }
@@ -455,8 +475,7 @@ fn map_property_type(
     let default_type = rules
         .as_ref()
         .and_then(|r| r.type_mappings.as_ref())
-        .and_then(|tm| tm.default_type.as_ref())
-        .map(|s| s.clone())
+        .and_then(|tm| tm.default_type.as_ref()).cloned()
         .unwrap_or_else(|| "object".to_string());
     
     // Handle array types with item definitions
@@ -495,8 +514,7 @@ pub fn convert_plugin_to_topic(
     let fallback_name = plugin
         .label
         .as_ref()
-        .or(Some(&plugin.name))
-        .map(|s| s.clone())
+        .or(Some(&plugin.name)).cloned()
         .unwrap_or_else(|| "Unknown".to_string());
     
     let merged_description = merge_description_and_scope(
@@ -568,7 +586,7 @@ fn build_topic_instructions(plugin: &Plugin, rules: &Option<ConversionRules>) ->
         .as_ref()
         .or(Some(&plugin.name))
         .map(|s| s.to_lowercase())
-        .unwrap_or_else(|| String::new());
+        .unwrap_or_default();
     
     if topic_name.contains("off_topic")
         || topic_name.contains("offtopic")
@@ -612,8 +630,7 @@ fn build_detailed_actions(
             let fallback_desc = func
                 .description
                 .as_ref()
-                .or(func.label.as_ref())
-                .map(|s| s.clone())
+                .or(func.label.as_ref()).cloned()
                 .unwrap_or_else(|| action_name.clone());
             
             let mut action = Action {
@@ -706,7 +723,7 @@ fn build_detailed_inputs(
                 .or_else(|| prop.lightning_type.clone())
                 .or_else(|| prop.ref_type.as_ref().map(|r| {
                     // Extract type name from $ref like "#/$defs/lightning__recordInfoType"
-                    r.split('/').last().unwrap_or(r).to_string()
+                    r.split('/').next_back().unwrap_or(r).to_string()
                 }));
             
             inputs.insert(
@@ -754,7 +771,7 @@ fn build_detailed_outputs(
                     .or_else(|| prop.lightning_type.clone())
                     .or_else(|| prop.ref_type.as_ref().map(|r| {
                         // Extract type name from $ref like "#/$defs/lightning__richTextType"
-                        r.split('/').last().unwrap_or(r).to_string()
+                        r.split('/').next_back().unwrap_or(r).to_string()
                     }));
                 
                 // For plain object types, default to lightning__recordInfoType if no source type
@@ -793,15 +810,11 @@ pub fn convert_simple_format(
     let mut nga = NGAOutput {
         system: SystemSection {
             instructions: input
-                .description
-                .as_ref()
-                .map(|s| s.clone())
+                .description.clone()
                 .unwrap_or_else(|| defaults.0.clone()),
             messages: MessagesSection {
                 welcome: input
-                    .welcome_message
-                    .as_ref()
-                    .map(|s| s.clone())
+                    .welcome_message.clone()
                     .unwrap_or_else(|| defaults.1.clone()),
                 error: defaults.2.clone(),
             },
@@ -811,8 +824,7 @@ pub fn convert_simple_format(
             agent_label: input
                 .label
                 .as_ref()
-                .or(input.name.as_ref())
-                .map(|s| s.clone())
+                .or(input.name.as_ref()).cloned()
                 .unwrap_or_else(|| "Custom Agent".to_string()),
             developer_name: generate_developer_name(
                 input
@@ -822,17 +834,13 @@ pub fn convert_simple_format(
                     .unwrap_or("Agent")
             ),
             description: input
-                .description
-                .as_ref()
-                .map(|s| s.clone())
+                .description.clone()
                 .unwrap_or_else(|| "Service Agent".to_string()),
         },
         variables: HashMap::new(),
         language: LanguageSection {
             default_locale: input
-                .locale
-                .as_ref()
-                .map(|s| s.clone())
+                .locale.clone()
                 .unwrap_or_else(|| lang_defaults.0.clone()),
             additional_locales: String::new(),
             all_additional_locales: lang_defaults.1,
@@ -844,7 +852,7 @@ pub fn convert_simple_format(
     // Variables section
     if let Some(vars) = &input.variables {
         for v in vars {
-            let var_name = v.name.as_ref().or(v.id.as_ref()).map(|s| s.clone());
+            let var_name = v.name.as_ref().or(v.id.as_ref()).cloned();
             if let Some(name) = var_name {
                 let var_type = v.var_type.as_deref().unwrap_or("string");
                 // Object types (including list[object]) should always be mutable, not linked
@@ -862,9 +870,7 @@ pub fn convert_simple_format(
                         label: v.label.clone(),
                         source,
                         description: v
-                            .description
-                            .as_ref()
-                            .map(|s| s.clone())
+                            .description.clone()
                             .unwrap_or_else(|| format!("Variable {}", name)),
                     },
                 );
@@ -904,9 +910,7 @@ pub fn convert_simple_format(
             
             let nga_topic = Topic {
                 label: topic
-                    .label
-                    .as_ref()
-                    .map(|s| s.clone())
+                    .label.clone()
                     .unwrap_or_else(|| format_label(&topic_name)),
                 description: merge_description_and_scope(
                     topic.description.as_deref(),
@@ -917,8 +921,7 @@ pub fn convert_simple_format(
                     instructions: topic
                         .instructions
                         .as_ref()
-                        .or(topic.reasoning.as_ref())
-                        .map(|s| s.clone())
+                        .or(topic.reasoning.as_ref()).cloned()
                         .unwrap_or_else(|| "Handle user requests appropriately.".to_string()),
                     actions: None,
                 },
@@ -945,8 +948,7 @@ fn convert_simple_actions_detailed(
             let action_name = action
                 .name
                 .as_ref()
-                .or(action.id.as_ref())
-                .map(|s| s.clone())
+                .or(action.id.as_ref()).cloned()
                 .unwrap_or_else(|| "action".to_string());
             
             // Skip transition-type actions
@@ -961,9 +963,7 @@ fn convert_simple_actions_detailed(
             
             let mut nga_action = Action {
                 description: action
-                    .description
-                    .as_ref()
-                    .map(|s| s.clone())
+                    .description.clone()
                     .unwrap_or_else(|| action_name.clone()),
                 label: action.label.clone(),
                 require_user_confirmation: action.require_user_confirmation.unwrap_or(false),
@@ -973,8 +973,7 @@ fn convert_simple_actions_detailed(
                 target: action
                     .invocation_target
                     .as_ref()
-                    .or(action.target_name.as_ref())
-                    .map(|s| s.clone())
+                    .or(action.target_name.as_ref()).cloned()
                     .unwrap_or_else(|| format!("action://{}", action_name)),
                 inputs: None,
                 outputs: None,
@@ -1037,9 +1036,7 @@ pub fn convert_generic_format(
     let mut nga = NGAOutput {
         system: SystemSection {
             instructions: input
-                .planner_role
-                .as_ref()
-                .map(|s| s.clone())
+                .planner_role.clone()
                 .unwrap_or_else(|| defaults.0.clone()),
             messages: MessagesSection {
                 welcome: defaults.1.clone(),
@@ -1051,24 +1048,19 @@ pub fn convert_generic_format(
             agent_label: input
                 .label
                 .as_ref()
-                .or(input.name.as_ref())
-                .map(|s| s.clone())
+                .or(input.name.as_ref()).cloned()
                 .unwrap_or_else(|| "Custom Agent".to_string()),
             developer_name: generate_developer_name(
                 input.name.as_deref().unwrap_or("Agent")
             ),
             description: input
-                .description
-                .as_ref()
-                .map(|s| s.clone())
+                .description.clone()
                 .unwrap_or_else(|| "Service Agent".to_string()),
         },
         variables: HashMap::new(),
         language: LanguageSection {
             default_locale: input
-                .locale
-                .as_ref()
-                .map(|s| s.clone())
+                .locale.clone()
                 .unwrap_or_else(|| lang_defaults.0.clone()),
             additional_locales: String::new(),
             all_additional_locales: lang_defaults.1,
@@ -1149,9 +1141,7 @@ fn create_topic_selector_from_plugins(
     // Add default topic transitions
     let default_transitions = get_default_topic_transitions(rules);
     for (key, value) in default_transitions {
-        if !actions.contains_key(&key) {
-            actions.insert(key, value);
-        }
+        actions.entry(key).or_insert(value);
     }
     
     Ok(Topic {
@@ -1191,9 +1181,7 @@ fn create_topic_selector_from_simple_topics(
     // Add default topic transitions
     let default_transitions = get_default_topic_transitions(rules);
     for (key, value) in default_transitions {
-        if !actions.contains_key(&key) {
-            actions.insert(key, value);
-        }
+        actions.entry(key).or_insert(value);
     }
     
     Ok(Topic {
@@ -1214,22 +1202,17 @@ fn get_topic_selector_template(rules: &Option<ConversionRules>) -> (String, Stri
             if let Some(topic_selector) = &templates.topic_selector {
                 return (
                     topic_selector
-                        .label
-                        .as_ref()
-                        .map(|s| s.clone())
+                        .label.clone()
                         .unwrap_or_else(|| "Topic Selector".to_string()),
                     topic_selector
-                        .description
-                        .as_ref()
-                        .map(|s| s.clone())
+                        .description.clone()
                         .unwrap_or_else(|| {
                             "Welcome the user and determine the appropriate topic based on user input".to_string()
                         }),
                     topic_selector
                         .reasoning
                         .as_ref()
-                        .and_then(|r| r.instructions.as_ref())
-                        .map(|s| s.clone())
+                        .and_then(|r| r.instructions.as_ref()).cloned()
                         .unwrap_or_else(|| {
                             "Select the best tool to call based on conversation history and user's intent.".to_string()
                         }),
@@ -1384,21 +1367,18 @@ fn create_default_escalation_topic(
     };
     
     let default_label = template
-        .and_then(|t| t.label.as_ref())
-        .map(|s| s.clone())
+        .and_then(|t| t.label.as_ref()).cloned()
         .unwrap_or_else(|| "Escalation".to_string());
     
     let default_desc = template
-        .and_then(|t| t.description.as_ref())
-        .map(|s| s.clone())
+        .and_then(|t| t.description.as_ref()).cloned()
         .unwrap_or_else(|| {
             "Handles requests from users who want to transfer or escalate their conversation to a live human agent.".to_string()
         });
     
     let default_instructions = template
         .and_then(|t| t.reasoning.as_ref())
-        .and_then(|r| r.instructions.as_ref())
-        .map(|s| s.clone())
+        .and_then(|r| r.instructions.as_ref()).cloned()
         .unwrap_or_else(|| {
             "If a user explicitly asks to transfer to a live agent, escalate the conversation.\nIf escalation to a live agent fails for any reason, acknowledge the issue and ask the user whether they would like to log a support case instead.".to_string()
         });
@@ -1472,20 +1452,17 @@ fn create_default_off_topic(rules: &Option<ConversionRules>) -> Result<Topic, St
     };
     
     let default_label = template
-        .and_then(|t| t.label.as_ref())
-        .map(|s| s.clone())
+        .and_then(|t| t.label.as_ref()).cloned()
         .unwrap_or_else(|| "Off Topic".to_string());
     
     let default_desc = template
-        .and_then(|t| t.description.as_ref())
-        .map(|s| s.clone())
+        .and_then(|t| t.description.as_ref()).cloned()
         .unwrap_or_else(|| {
             "Redirect conversation to relevant topics when user request goes off-topic".to_string()
         });
     
     let base_instructions = template
-        .and_then(|t| t.base_instructions.as_ref())
-        .map(|s| s.clone())
+        .and_then(|t| t.base_instructions.as_ref()).cloned()
         .unwrap_or_else(|| {
             "Your job is to redirect the conversation to relevant topics politely and succinctly.\nThe user request is off-topic. NEVER answer general knowledge questions. Only respond to general greetings and questions about your capabilities.\nDo not acknowledge the user's off-topic question. Redirect the conversation by asking how you can help with questions related to the pre-defined topics.".to_string()
         });
@@ -1534,20 +1511,17 @@ fn create_default_ambiguous_topic(
     };
     
     let default_label = template
-        .and_then(|t| t.label.as_ref())
-        .map(|s| s.clone())
+        .and_then(|t| t.label.as_ref()).cloned()
         .unwrap_or_else(|| "Ambiguous Question".to_string());
     
     let default_desc = template
-        .and_then(|t| t.description.as_ref())
-        .map(|s| s.clone())
+        .and_then(|t| t.description.as_ref()).cloned()
         .unwrap_or_else(|| {
             "Redirect conversation to relevant topics when user request is too ambiguous".to_string()
         });
     
     let base_instructions = template
-        .and_then(|t| t.base_instructions.as_ref())
-        .map(|s| s.clone())
+        .and_then(|t| t.base_instructions.as_ref()).cloned()
         .unwrap_or_else(|| {
             "Your job is to help the user provide clearer, more focused requests for better assistance.\nDo not answer any of the user's ambiguous questions. Do not invoke any actions.\nPolitely guide the user to provide more specific details about their request.\nEncourage them to focus on their most important concern first to ensure you can provide the most helpful response.".to_string()
         });

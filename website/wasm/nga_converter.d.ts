@@ -57,7 +57,7 @@ declare namespace wasm_bindgen {
     export function get_status_suffix(rules_json: string): string;
 
     /**
-     * Initialize WASM module
+     * Initialize WASM module with panic hook for better error messages
      */
     export function init(): void;
 
@@ -76,8 +76,8 @@ declare interface InitOutput {
     readonly init: () => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
-    readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;
+    readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
     readonly __wbindgen_start: () => void;
 }
 

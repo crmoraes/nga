@@ -195,7 +195,7 @@ let wasm_bindgen = (function(exports) {
     exports.get_status_suffix = get_status_suffix;
 
     /**
-     * Initialize WASM module
+     * Initialize WASM module with panic hook for better error messages
      */
     function init() {
         wasm.init();
@@ -223,12 +223,27 @@ let wasm_bindgen = (function(exports) {
             __wbg___wbindgen_throw_be289d5034ed271b: function(arg0, arg1) {
                 throw new Error(getStringFromWasm0(arg0, arg1));
             },
+            __wbg_error_7534b8e9a36f1ab4: function(arg0, arg1) {
+                let deferred0_0;
+                let deferred0_1;
+                try {
+                    deferred0_0 = arg0;
+                    deferred0_1 = arg1;
+                    console.error(getStringFromWasm0(arg0, arg1));
+                } finally {
+                    wasm.__wbindgen_export3(deferred0_0, deferred0_1, 1);
+                }
+            },
             __wbg_new_361308b2356cecd0: function() {
                 const ret = new Object();
                 return addHeapObject(ret);
             },
             __wbg_new_3eb36ae241fe6f44: function() {
                 const ret = new Array();
+                return addHeapObject(ret);
+            },
+            __wbg_new_8a6f238a6ece86ea: function() {
+                const ret = new Error();
                 return addHeapObject(ret);
             },
             __wbg_new_dca287b076112a51: function() {
@@ -244,6 +259,16 @@ let wasm_bindgen = (function(exports) {
             },
             __wbg_set_f43e577aea94465b: function(arg0, arg1, arg2) {
                 getObject(arg0)[arg1 >>> 0] = takeObject(arg2);
+            },
+            __wbg_stack_0ed75d68575b0f3c: function(arg0, arg1) {
+                const ret = getObject(arg1).stack;
+                const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+                const len1 = WASM_VECTOR_LEN;
+                getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+                getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+            },
+            __wbg_warn_f7ae1b2e66ccb930: function(arg0) {
+                console.warn(getObject(arg0));
             },
             __wbindgen_cast_0000000000000001: function(arg0) {
                 // Cast intrinsic for `F64 -> Externref`.

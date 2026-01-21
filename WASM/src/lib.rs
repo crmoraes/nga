@@ -1,3 +1,12 @@
+//! NGA YAML Interpreter - Core conversion logic compiled to WebAssembly
+//! 
+//! This crate provides the conversion logic to transform Salesforce Agentforce
+//! JSON/YAML into the Next Generation Agent (NGA) script format.
+
+#![warn(clippy::all)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::too_many_lines)]
+
 mod models;
 mod helpers;
 mod variable_processor;
@@ -6,18 +15,43 @@ mod yaml_generator;
 mod report_generator;
 
 use wasm_bindgen::prelude::*;
-use serde_json;
 use crate::models::*;
 use crate::converter::*;
 use crate::yaml_generator::*;
 use crate::variable_processor::*;
 use crate::report_generator::*;
 
-/// Initialize WASM module
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+/// Initialize WASM module with panic hook for better error messages
 #[wasm_bindgen(start)]
 pub fn init() {
-    // Set up panic hook for better error messages (if available)
-    // Note: console_error_panic_hook is optional
+    #[cfg(feature = "console_error_panic_hook")]
+    console_error_panic_hook::set_once();
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/// Parse rules JSON string into ConversionRules
+/// Returns None if the string is empty or parsing fails
+/// Logs a warning to console if parsing fails (for debugging)
+fn parse_rules(rules_json: &str) -> Option<ConversionRules> {
+    if rules_json.is_empty() {
+        return None;
+    }
+    
+    match serde_json::from_str(rules_json) {
+        Ok(rules) => Some(rules),
+        Err(e) => {
+            // Log warning for debugging (don't fail, just use defaults)
+            web_sys::console::warn_1(&format!("Failed to parse rules JSON: {}. Using defaults.", e).into());
+            None
+        }
+    }
 }
 
 /// Main conversion function - converts input JSON to NGA YAML
@@ -38,15 +72,8 @@ pub fn convert_agent(input_json: &str, rules_json: &str) -> Result<JsValue, JsVa
     let input: AgentforceInput = serde_json::from_str(input_json)
         .map_err(|e| JsValue::from_str(&format!("Failed to parse input JSON: {}", e)))?;
     
-    // Parse rules JSON (if provided)
-    let rules: Option<ConversionRules> = if rules_json.is_empty() {
-        None
-    } else {
-        match serde_json::from_str(rules_json) {
-            Ok(r) => Some(r),
-            Err(_) => None, // Use defaults if rules parsing fails
-        }
-    };
+    // Parse rules JSON using helper function
+    let rules = parse_rules(rules_json);
     
     // Check for variables with $ in the input
     let input_str = input_json;
@@ -95,36 +122,21 @@ pub fn convert_agent(input_json: &str, rules_json: &str) -> Result<JsValue, JsVa
 /// Check if input contains variables with $ sign
 #[wasm_bindgen]
 pub fn check_dollar_variables(input: &str, rules_json: &str) -> bool {
-    let rules: Option<ConversionRules> = if rules_json.is_empty() {
-        None
-    } else {
-        serde_json::from_str(rules_json).ok()
-    };
-    
+    let rules = parse_rules(rules_json);
     check_for_dollar_variables(input, &rules)
 }
 
 /// Get variable alert message
 #[wasm_bindgen]
 pub fn get_alert_message(rules_json: &str) -> String {
-    let rules: Option<ConversionRules> = if rules_json.is_empty() {
-        None
-    } else {
-        serde_json::from_str(rules_json).ok()
-    };
-    
+    let rules = parse_rules(rules_json);
     get_variable_alert_message(&rules)
 }
 
 /// Get variable status suffix
 #[wasm_bindgen]
 pub fn get_status_suffix(rules_json: &str) -> String {
-    let rules: Option<ConversionRules> = if rules_json.is_empty() {
-        None
-    } else {
-        serde_json::from_str(rules_json).ok()
-    };
-    
+    let rules = parse_rules(rules_json);
     get_variable_status_suffix(&rules)
 }
 

@@ -16,7 +16,7 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
     let error_msg = convert_variables_in_text(Some(&nga.system.messages.error), rules);
     output.push_str(&format!("        welcome: \"{}\"\n", escape_yaml_string(&welcome_msg)));
     output.push_str(&format!("        error: \"{}\"\n", escape_yaml_string(&error_msg)));
-    output.push_str("\n");
+    output.push('\n');
     
     // Config section
     output.push_str("config:\n");
@@ -25,7 +25,7 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
     output.push_str(&format!("  developer_name: \"{}\"\n", nga.config.developer_name));
     let config_desc = convert_variables_in_text(Some(&nga.config.description), rules);
     output.push_str(&format!("  description: \"{}\"\n", escape_yaml_string(&config_desc)));
-    output.push_str("\n");
+    output.push('\n');
     
     // Variables section
     if !nga.variables.is_empty() {
@@ -52,14 +52,14 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
             output.push_str(&format!("        description: \"{}\"\n", escape_yaml_string(&var_desc)));
         }
     }
-    output.push_str("\n");
+    output.push('\n');
     
     // Language section
     output.push_str("language:\n");
     output.push_str(&format!("    default_locale: \"{}\"\n", nga.language.default_locale));
     output.push_str(&format!("    additional_locales: \"{}\"\n", nga.language.additional_locales));
     output.push_str(&format!("    all_additional_locales: {}\n", format_boolean_value(nga.language.all_additional_locales)));
-    output.push_str("\n");
+    output.push('\n');
     
     // Connection section
     let mut conn_keys: Vec<_> = nga.connections.keys().collect();
@@ -69,7 +69,7 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
             let connection = &nga.connections[key];
             output.push_str(&format!("{}:\n", key));
             output.push_str(&format!("    adaptive_response_allowed: {}\n", format_boolean_value(connection.adaptive_response_allowed)));
-            output.push_str("\n");
+            output.push('\n');
             break;
         }
     }
@@ -82,12 +82,12 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
             let topic = &nga.topics[key];
             output.push_str(&format!("{}:\n", key));
             output.push_str(&format!("    label: \"{}\"\n", topic.label));
-            output.push_str("\n");
+            output.push('\n');
             
             // Apply variable conversion to topic description
             let topic_desc = convert_variables_in_text(Some(&topic.description), rules);
             output.push_str(&format!("    description: \"{}\"\n", escape_yaml_string(&topic_desc)));
-            output.push_str("\n");
+            output.push('\n');
             
             // Reasoning section
             output.push_str("    reasoning:\n");
@@ -114,7 +114,7 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
                             output.push_str(&format!("                description: \"{}\"\n", escape_yaml_string(&desc_converted)));
                         }
                     }
-                    output.push_str("\n");
+                    output.push('\n');
                 }
             }
             
@@ -126,7 +126,7 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
                 }
             }
             
-            output.push_str("\n");
+            output.push('\n');
         }
     }
     

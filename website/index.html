@@ -10,16 +10,19 @@
     <!-- External scripts with Subresource Integrity (SRI) -->
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"
             integrity="sha384-+pxiN6T7yvpryuJmE1gM9PX7yQit15auDb+ZwwvJOd/4be2Cie5/IuVXgQb/S9du"
-            crossorigin="anonymous"></script>
+            crossorigin="anonymous"
+            defer></script>
     <script src="https://cdn.jsdelivr.net/npm/marked@5.1.2/marked.min.js"
             integrity="sha384-tP9zQHkeb4OfJ9PanaUpV7hxoPxP8KY4mYVYu+FK51pzcM3/idOlmVlA4kPO2SL2"
-            crossorigin="anonymous"></script>
+            crossorigin="anonymous"
+            defer></script>
     <!-- DOMPurify for sanitizing markdown output -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js"
             integrity="sha384-80VlBZnyAwkkqtSfg5NhPyZff6nU4K/qniLBL8Jnm4KDv6jZhLiYtJbhglg/i9ww"
-            crossorigin="anonymous"></script>
+            crossorigin="anonymous"
+            defer></script>
     <!-- WASM Module - Load using bundler format -->
-    <script src="wasm/nga_converter.js"></script>
+    <script src="wasm/nga_converter.js" defer></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -28,7 +31,7 @@
         <header>
             <div class="header-top">
                 <div class="logo">
-                    <div class="logo-icon">
+                    <div class="logo-icon" aria-hidden="true">
                         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M20 4L36 12V28L20 36L4 28V12L20 4Z" stroke="currentColor" stroke-width="2" fill="none"/>
                             <path d="M20 12L28 16V24L20 28L12 24V16L20 12Z" fill="currentColor"/>
@@ -37,7 +40,7 @@
                     <h1>Agentforce AgentScript Interpreter</h1>
                 </div>
                 <button class="learn-more-btn" id="learnMoreBtn" title="Learn More">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"/>
                         <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
                         <line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -58,15 +61,15 @@
                         </div>
                         <div class="panel-actions">
                             <label class="btn-icon file-upload-btn" title="Upload File (YAML/JSON)">
-                                <input type="file" id="fileInput" accept=".yaml,.yml,.json" hidden>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <input type="file" id="fileInput" accept=".yaml,.yml,.json" hidden aria-label="Upload YAML or JSON file">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                     <polyline points="17 8 12 3 7 8"/>
                                     <line x1="12" y1="3" x2="12" y2="15"/>
                                 </svg>
                             </label>
-                            <button class="btn-icon" id="loadSample" title="Load Sample">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button class="btn-icon" id="loadSample" title="Load Sample" aria-label="Load sample data">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                     <polyline points="14 2 14 8 20 8"/>
                                     <line x1="16" y1="13" x2="8" y2="13"/>
@@ -74,20 +77,20 @@
                                     <polyline points="10 9 9 9 8 9"/>
                                 </svg>
                             </button>
-                            <button class="btn-icon" id="clearInput" title="Clear">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button class="btn-icon" id="clearInput" title="Clear" aria-label="Clear input">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <polyline points="3 6 5 6 21 6"/>
                                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                                 </svg>
                             </button>
-                            <button class="btn-icon btn-expand" id="expandInput" title="Expand">
-                                <svg class="icon-expand" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button class="btn-icon btn-expand" id="expandInput" title="Expand" aria-label="Expand input panel">
+                                <svg class="icon-expand" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <polyline points="15 3 21 3 21 9"/>
                                     <polyline points="9 21 3 21 3 15"/>
                                     <line x1="21" y1="3" x2="14" y2="10"/>
                                     <line x1="3" y1="21" x2="10" y2="14"/>
                                 </svg>
-                                <svg class="icon-collapse" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                <svg class="icon-collapse hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <polyline points="4 14 10 14 10 20"/>
                                     <polyline points="20 10 14 10 14 4"/>
                                     <line x1="14" y1="10" x2="21" y2="3"/>
@@ -96,9 +99,9 @@
                             </button>
                         </div>
                     </div>
-                    <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone" id="dropZone" role="region" aria-label="File drop zone">
                         <div class="drop-zone-content">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                 <polyline points="17 8 12 3 7 8"/>
                                 <line x1="12" y1="3" x2="12" y2="15"/>
@@ -115,7 +118,7 @@
                 <div class="convert-section">
                     <button class="convert-btn" id="convertBtn">
                         <span class="btn-text">Convert</span>
-                        <svg class="btn-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="btn-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <line x1="5" y1="12" x2="19" y2="12"/>
                             <polyline points="12 5 19 12 12 19"/>
                         </svg>
@@ -130,21 +133,21 @@
                             NGA Format Output
                         </div>
                         <div class="panel-actions">
-                            <button class="btn-icon" id="copyOutput" title="Copy to Clipboard">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button class="btn-icon" id="copyOutput" title="Copy to Clipboard" aria-label="Copy output to clipboard">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                                 </svg>
                             </button>
-                            <button class="btn-icon" id="downloadOutput" title="Download">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button class="btn-icon" id="downloadOutput" title="Download" aria-label="Download output file">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                     <polyline points="7 10 12 15 17 10"/>
                                     <line x1="12" y1="15" x2="12" y2="3"/>
                                 </svg>
                             </button>
-                            <button class="btn-icon" id="conversionReportBtn" title="Conversion Report" style="display: none;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button class="btn-icon hidden" id="conversionReportBtn" title="Conversion Report" aria-label="View conversion report">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                     <polyline points="14 2 14 8 20 8"/>
                                     <line x1="16" y1="13" x2="8" y2="13"/>
@@ -152,20 +155,20 @@
                                     <polyline points="10 9 9 9 8 9"/>
                                 </svg>
                             </button>
-                            <button class="btn-icon" id="clearOutput" title="Clear">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button class="btn-icon" id="clearOutput" title="Clear" aria-label="Clear output">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <polyline points="3 6 5 6 21 6"/>
                                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                                 </svg>
                             </button>
-                            <button class="btn-icon btn-expand" id="expandOutput" title="Expand">
-                                <svg class="icon-expand" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button class="btn-icon btn-expand" id="expandOutput" title="Expand" aria-label="Expand output panel">
+                                <svg class="icon-expand" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <polyline points="15 3 21 3 21 9"/>
                                     <polyline points="9 21 3 21 3 15"/>
                                     <line x1="21" y1="3" x2="14" y2="10"/>
                                     <line x1="3" y1="21" x2="10" y2="14"/>
                                 </svg>
-                                <svg class="icon-collapse" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                <svg class="icon-collapse hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <polyline points="4 14 10 14 10 20"/>
                                     <polyline points="20 10 14 10 14 4"/>
                                     <line x1="14" y1="10" x2="21" y2="3"/>
@@ -181,8 +184,8 @@
                 </div>
             </div>
 
-            <div class="status-bar" id="statusBar">
-                <span class="status-icon">✓</span>
+            <div class="status-bar" id="statusBar" role="status" aria-live="polite">
+                <span class="status-icon" aria-hidden="true">✓</span>
                 <span class="status-text">Ready to convert</span>
             </div>
         </main>
@@ -196,24 +199,24 @@
         </footer>
     </div>
 
-    <div class="toast" id="toast">
-        <span class="toast-icon">✓</span>
+    <div class="toast" id="toast" role="alert" aria-live="assertive">
+        <span class="toast-icon" aria-hidden="true">✓</span>
         <span class="toast-message"></span>
     </div>
 
     <!-- Learn More Modal -->
-    <div class="modal-overlay" id="learnMoreModal">
+    <div class="modal-overlay" id="learnMoreModal" role="dialog" aria-modal="true" aria-labelledby="learnMoreTitle">
         <div class="modal">
             <div class="modal-header">
-                <h2>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <h2 id="learnMoreTitle">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
                         <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                     </svg>
                     Documentation
                 </h2>
-                <button class="modal-close" id="closeModal" title="Close">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button class="modal-close" id="closeModal" title="Close" aria-label="Close documentation modal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <line x1="18" y1="6" x2="6" y2="18"/>
                         <line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
@@ -221,7 +224,7 @@
             </div>
             <div class="modal-content" id="modalContent">
                 <div class="modal-loading">
-                    <div class="spinner"></div>
+                    <div class="spinner" aria-hidden="true"></div>
                     <p>Loading documentation...</p>
                 </div>
             </div>
@@ -229,11 +232,11 @@
     </div>
 
     <!-- Conversion Report Modal -->
-    <div class="modal-overlay" id="conversionReportModal">
+    <div class="modal-overlay" id="conversionReportModal" role="dialog" aria-modal="true" aria-labelledby="conversionReportTitle">
         <div class="modal">
             <div class="modal-header">
-                <h2>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <h2 id="conversionReportTitle">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
                         <line x1="16" y1="13" x2="8" y2="13"/>
@@ -242,16 +245,25 @@
                     </svg>
                     Conversion Report
                 </h2>
-                <button class="modal-close" id="closeReportModal" title="Close">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
+                <div class="modal-header-actions">
+                    <button class="modal-action-btn" id="printReportBtn" title="Print Report" aria-label="Print conversion report">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <polyline points="6 9 6 2 18 2 18 9"/>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                            <rect x="6" y="14" width="12" height="8"/>
+                        </svg>
+                    </button>
+                    <button class="modal-close" id="closeReportModal" title="Close" aria-label="Close conversion report modal">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="modal-content" id="reportModalContent">
                 <div class="modal-loading">
-                    <div class="spinner"></div>
+                    <div class="spinner" aria-hidden="true"></div>
                     <p>Generating report...</p>
                 </div>
             </div>
@@ -259,11 +271,11 @@
     </div>
 
     <!-- Disclaimer Modal -->
-    <div class="modal-overlay" id="disclaimerModal">
+    <div class="modal-overlay" id="disclaimerModal" role="alertdialog" aria-modal="true" aria-labelledby="disclaimerTitle" aria-describedby="disclaimerModalContent">
         <div class="modal disclaimer-modal">
             <div class="modal-header disclaimer-header">
-                <h2>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <h2 id="disclaimerTitle">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/>
                         <line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -273,7 +285,7 @@
             </div>
             <div class="modal-content disclaimer-content" id="disclaimerModalContent">
                 <div class="modal-loading">
-                    <div class="spinner"></div>
+                    <div class="spinner" aria-hidden="true"></div>
                     <p>Loading disclaimer...</p>
                 </div>
             </div>

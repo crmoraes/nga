@@ -1,7 +1,37 @@
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use crate::models::*;
+
+// ============================================================================
+// STATIC REGEX PATTERNS (compiled once at startup)
+// ============================================================================
+
+/// Pattern: {!@variables.VarName}
+static REPORT_VAR_PATTERN_1: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\{!@variables\.([^}]+)\}").expect("Invalid regex pattern for REPORT_VAR_PATTERN_1")
+});
+
+/// Pattern: {!$VarName}
+static REPORT_VAR_PATTERN_2: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\{!\$([^}]+)\}").expect("Invalid regex pattern for REPORT_VAR_PATTERN_2")
+});
+
+/// Pattern: {$!VarName}
+static REPORT_VAR_PATTERN_3: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\{\$!([^}]+)\}").expect("Invalid regex pattern for REPORT_VAR_PATTERN_3")
+});
+
+/// Pattern: {$VarName}
+static REPORT_VAR_PATTERN_4: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\{\$([^!}][^}]*)\}").expect("Invalid regex pattern for REPORT_VAR_PATTERN_4")
+});
+
+/// Pattern: {!VarName}
+static REPORT_VAR_PATTERN_5: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\{!([^@}][^}]*)\}").expect("Invalid regex pattern for REPORT_VAR_PATTERN_5")
+});
 
 // ============================================================================
 // REPORT DATA STRUCTURES
@@ -65,18 +95,18 @@ pub struct VariablesInInstructions {
 // VARIABLE PATTERN DETECTION
 // ============================================================================
 
-/// Get variable detection patterns (IP protected)
-fn get_variable_patterns() -> Vec<Regex> {
-    vec![
-        Regex::new(r"\{!@variables\.([^}]+)\}").unwrap(),
-        Regex::new(r"\{!\$([^}]+)\}").unwrap(),
-        Regex::new(r"\{\$!([^}]+)\}").unwrap(),
-        Regex::new(r"\{\$([^!}][^}]*)\}").unwrap(),
-        Regex::new(r"\{!([^@}][^}]*)\}").unwrap(),
+/// Get pre-compiled variable detection patterns
+fn get_variable_patterns() -> [&'static Lazy<Regex>; 5] {
+    [
+        &REPORT_VAR_PATTERN_1,
+        &REPORT_VAR_PATTERN_2,
+        &REPORT_VAR_PATTERN_3,
+        &REPORT_VAR_PATTERN_4,
+        &REPORT_VAR_PATTERN_5,
     ]
 }
 
-/// Extract variables from text using patterns
+/// Extract variables from text using pre-compiled patterns
 pub fn extract_variables_from_text(text: &str) -> HashSet<String> {
     let patterns = get_variable_patterns();
     let mut found_variables = HashSet::new();
@@ -175,7 +205,7 @@ fn is_alphanumeric_id(target_name: &str) -> bool {
     
     // Heuristic: if it has consecutive numbers (like "00000") or starts with numbers,
     // it's likely an ID rather than a flow name
-    let starts_with_number = target_name.chars().next().map_or(false, |c| c.is_ascii_digit());
+    let starts_with_number = target_name.chars().next().is_some_and(|c| c.is_ascii_digit());
     let has_consecutive_numbers = target_name.chars()
         .collect::<Vec<_>>()
         .windows(3)

@@ -4,11 +4,14 @@
  * Based on: https://developer.salesforce.com/docs/ai/agentforce/guide/agent-script.html
  */
 
-// Global rules object - loaded from nga-rules.json
+(function() {
+'use strict';
+
+// Module-scoped rules object - loaded from nga-rules.json
 let RULES = null;
 
 // WASM module - will be initialized when loaded
-let wasmInitialized = false;
+let isWasmInitialized = false;
 
 // Security constants
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -22,16 +25,20 @@ const VALID_MIME_TYPES = [
     'text/plain' // Some systems don't set proper MIME for YAML
 ];
 
+// UI timing constants
+const TOAST_DURATION_MS = 3000;
+const LINE_NUMBER_UPDATE_DELAY_MS = 100;
+
 // Sample input is loaded dynamically from agent.json
 
 // Store conversion data for report generation
 let conversionData = null;
 
-// Track if user has accepted the disclaimer in this session
-let disclaimerAccepted = false;
+// Track if user has accepted the disclaimer in this session (boolean uses is/has prefix)
+let isDisclaimerAccepted = false;
 
-// Track if disclaimer content has been loaded
-let disclaimerLoaded = false;
+// Track if disclaimer content has been loaded (boolean uses is/has prefix)
+let isDisclaimerLoaded = false;
 
 // DOM Elements
 const inputYaml = document.getElementById('inputYaml');
@@ -95,6 +102,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Initialize expand/collapse functionality
     initExpandCollapse();
+    
+    // Initialize global keyboard handler (consolidated Escape key handling)
+    initGlobalKeyboardHandler();
 });
 
 /**
@@ -113,12 +123,12 @@ async function initWasm() {
         // Pass undefined to use auto-detection, or explicit path if needed
         await wasm_bindgen();
         
-        wasmInitialized = true;
+        isWasmInitialized = true;
         console.log('WASM module loaded successfully');
     } catch (error) {
         console.error('Failed to load WASM module:', error);
         console.error('Error details:', error.message, error.stack);
-        wasmInitialized = false;
+        isWasmInitialized = false;
         // No fallback - WASM is required for IP protection
     }
 }
@@ -158,12 +168,7 @@ function initLearnMoreModal() {
         }
     });
     
-    // Close modal - Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-            closeModal(modal);
-        }
-    });
+    // Note: Escape key handling is consolidated in initGlobalKeyboardHandler()
 }
 
 function closeModal(modal) {
@@ -208,7 +213,7 @@ function initDisclaimerModal() {
     
     // Accept button - proceed with conversion
     acceptBtn.addEventListener('click', () => {
-        disclaimerAccepted = true;
+        isDisclaimerAccepted = true;
         closeModal(modal);
         // Proceed with conversion
         performConversion();
@@ -228,13 +233,7 @@ function initDisclaimerModal() {
         }
     });
     
-    // Close modal on Escape key (same as decline)
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-            closeModal(modal);
-            setStatus('Conversion cancelled - disclaimer not accepted', 'info');
-        }
-    });
+    // Note: Escape key handling is consolidated in initGlobalKeyboardHandler()
 }
 
 /**
@@ -247,7 +246,7 @@ async function loadDisclaimer(container) {
         
         const markdown = await response.text();
         renderMarkdownToContainer(markdown, container);
-        disclaimerLoaded = true;
+        isDisclaimerLoaded = true;
     } catch (error) {
         console.error('Error loading disclaimer:', error);
         container.innerHTML = createErrorMessage({
@@ -275,7 +274,7 @@ async function showDisclaimerModal() {
     document.body.style.overflow = 'hidden';
     
     // Load disclaimer content if not already loaded
-    if (!disclaimerLoaded) {
+    if (!isDisclaimerLoaded) {
         await loadDisclaimer(modalContent);
     }
 }
@@ -364,12 +363,7 @@ inputPanel.addEventListener('dragover', handleDragOver);
 inputPanel.addEventListener('dragleave', handleDragLeave);
 inputPanel.addEventListener('drop', handleDrop);
 
-document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        convert();
-    }
-});
+// Note: Ctrl+Enter keyboard shortcut is handled in initGlobalKeyboardHandler()
 
 // File handling
 function handleDragOver(e) {
@@ -659,7 +653,7 @@ function showToast(message) {
     const toastMessage = toast.querySelector('.toast-message');
     toastMessage.textContent = message;
     toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3000);
+    setTimeout(() => toast.classList.remove('show'), TOAST_DURATION_MS);
 }
 
 async function loadSample() {
@@ -781,7 +775,7 @@ async function convert() {
     }
     
     // If disclaimer not yet accepted, show it first
-    if (!disclaimerAccepted) {
+    if (!isDisclaimerAccepted) {
         await showDisclaimerModal();
         return;
     }
@@ -822,7 +816,7 @@ async function performConversion() {
         const rulesJson = RULES ? JSON.stringify(RULES) : '';
         
         // WASM is required - no JavaScript fallback to protect IP
-        if (!wasmInitialized || typeof wasm_bindgen === 'undefined') {
+        if (!isWasmInitialized || typeof wasm_bindgen === 'undefined') {
             setStatus('Error: WebAssembly module is required for conversion. Please ensure WASM files are available.', 'error');
             showToast('⚠️ Conversion requires WASM module. Please check server configuration.');
             outputYaml.value = '';
@@ -927,9 +921,9 @@ function getVariableStatusSuffix() {
 function toggleReportButton(show) {
     if (conversionReportBtn) {
         if (show) {
-            conversionReportBtn.style.display = 'flex';
+            conversionReportBtn.classList.remove('hidden');
         } else {
-            conversionReportBtn.style.display = 'none';
+            conversionReportBtn.classList.add('hidden');
         }
     }
 }
@@ -967,6 +961,14 @@ function initConversionReportModal() {
         closeModal(modal);
     });
     
+    // Print report - button click
+    const printBtn = document.getElementById('printReportBtn');
+    if (printBtn) {
+        printBtn.addEventListener('click', () => {
+            printConversionReport();
+        });
+    }
+    
     // Close modal - overlay click
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
@@ -974,12 +976,22 @@ function initConversionReportModal() {
         }
     });
     
-    // Close modal - Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-            closeModal(modal);
-        }
-    });
+    // Note: Escape key handling is consolidated in initGlobalKeyboardHandler()
+}
+
+/**
+ * Print the conversion report
+ * Opens the browser print dialog with the report content
+ */
+function printConversionReport() {
+    const modalContent = document.getElementById('reportModalContent');
+    if (!modalContent || !conversionData) {
+        showToast('No report content to print');
+        return;
+    }
+    
+    // Trigger browser print dialog
+    window.print();
 }
 
 /**
@@ -1039,7 +1051,7 @@ async function generateReport(data) {
     const { input, output, metadata } = data;
     
     // WASM is required for report generation (IP protection)
-    if (!wasmInitialized || typeof wasm_bindgen === 'undefined') {
+    if (!isWasmInitialized || typeof wasm_bindgen === 'undefined') {
         throw new Error('WASM module is required for report generation. Please ensure WASM files are available.');
     }
     
@@ -1257,16 +1269,7 @@ function initExpandCollapse() {
         });
     }
     
-    // Handle Escape key to collapse expanded panel
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            const expandedPanel = document.querySelector('.panel.expanded');
-            if (expandedPanel) {
-                const btn = expandedPanel.querySelector('.btn-expand');
-                togglePanelExpand(expandedPanel, btn);
-            }
-        }
-    });
+    // Note: Escape key handling is consolidated in initGlobalKeyboardHandler()
 }
 
 /**
@@ -1289,14 +1292,14 @@ function togglePanelExpand(panel, btn) {
         // Show expand icon, hide collapse icon (back to normal state)
         const expandIcon = btn.querySelector('.icon-expand');
         const collapseIcon = btn.querySelector('.icon-collapse');
-        if (expandIcon) expandIcon.style.display = 'block';
-        if (collapseIcon) collapseIcon.style.display = 'none';
+        if (expandIcon) expandIcon.classList.remove('hidden');
+        if (collapseIcon) collapseIcon.classList.add('hidden');
         
         // Update line numbers after collapse
         setTimeout(() => {
             updateLineNumbers(inputYaml, inputLineNumbers);
             updateLineNumbers(outputYaml, outputLineNumbers);
-        }, 100);
+        }, LINE_NUMBER_UPDATE_DELAY_MS);
     } else {
         // Expand
         panel.classList.add('expanded');
@@ -1307,8 +1310,8 @@ function togglePanelExpand(panel, btn) {
         // Hide expand icon, show collapse icon (expanded state)
         const expandIcon = btn.querySelector('.icon-expand');
         const collapseIcon = btn.querySelector('.icon-collapse');
-        if (expandIcon) expandIcon.style.display = 'none';
-        if (collapseIcon) collapseIcon.style.display = 'block';
+        if (expandIcon) expandIcon.classList.add('hidden');
+        if (collapseIcon) collapseIcon.classList.remove('hidden');
         
         // Focus the textarea in the expanded panel
         const textarea = panel.querySelector('textarea');
@@ -1320,7 +1323,66 @@ function togglePanelExpand(panel, btn) {
         setTimeout(() => {
             updateLineNumbers(inputYaml, inputLineNumbers);
             updateLineNumbers(outputYaml, outputLineNumbers);
-        }, 100);
+        }, LINE_NUMBER_UPDATE_DELAY_MS);
+    }
+}
+
+// ============================================================================
+// GLOBAL KEYBOARD HANDLER
+// ============================================================================
+
+/**
+ * Initialize unified global keyboard handler
+ * Consolidates all Escape key handling for modals and expanded panels
+ */
+function initGlobalKeyboardHandler() {
+    document.addEventListener('keydown', (e) => {
+        // Handle Ctrl+Enter for conversion
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            convert();
+            return;
+        }
+        
+        // Handle Escape key
+        if (e.key === 'Escape') {
+            handleEscapeKey();
+        }
+    });
+}
+
+/**
+ * Handle Escape key press - close active modal or collapse expanded panel
+ * Priority: Disclaimer modal > Other modals > Expanded panels
+ */
+function handleEscapeKey() {
+    // Check for disclaimer modal first (has special handling)
+    const disclaimerModal = document.getElementById('disclaimerModal');
+    if (disclaimerModal && disclaimerModal.classList.contains('active')) {
+        closeModal(disclaimerModal);
+        setStatus('Conversion cancelled - disclaimer not accepted', 'info');
+        return;
+    }
+    
+    // Check for other active modals
+    const learnMoreModal = document.getElementById('learnMoreModal');
+    if (learnMoreModal && learnMoreModal.classList.contains('active')) {
+        closeModal(learnMoreModal);
+        return;
+    }
+    
+    const conversionReportModal = document.getElementById('conversionReportModal');
+    if (conversionReportModal && conversionReportModal.classList.contains('active')) {
+        closeModal(conversionReportModal);
+        return;
+    }
+    
+    // Check for expanded panels
+    const expandedPanel = document.querySelector('.panel.expanded');
+    if (expandedPanel) {
+        const btn = expandedPanel.querySelector('.btn-expand');
+        togglePanelExpand(expandedPanel, btn);
+        return;
     }
 }
 
@@ -1337,3 +1399,5 @@ function togglePanelExpand(panel, btn) {
 // Conversion and report generation now require WASM module. If WASM fails to load, 
 // conversion will fail with an error message instead of falling back to JavaScript.
 // ============================================================================
+
+})();
