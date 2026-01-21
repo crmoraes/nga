@@ -434,6 +434,16 @@ fn map_property_type(
 ) -> String {
     let json_type = json_type.unwrap_or("object");
     
+    // Check for lightning__richTextType - should map to "object"
+    let is_rich_text_type = prop.lightning_type.as_deref() == Some("lightning__richTextType")
+        || prop.ref_type.as_ref()
+            .map(|r| r.contains("lightning__richTextType"))
+            .unwrap_or(false);
+    
+    if is_rich_text_type {
+        return "object".to_string();
+    }
+    
     // Get type mappings from rules
     let primitive_map: HashMap<&str, &str> = rules
         .as_ref()
