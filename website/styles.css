@@ -48,6 +48,56 @@
     --accent-output: var(--brand-2);
 }
 
+/* ===== CSS Variables - Dark Theme (Agent Script Toolkit Style) ===== */
+[data-theme="dark"] {
+    /* Background Colors - Dark blue/black gradient base */
+    --bg: #0a0e17;
+    --bg-soft: #111827;
+    --surface: #1a1f2e;
+    --card: #1a1f2e;
+    
+    /* Text Colors */
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+    
+    /* Brand Colors - Blue and Gold accents */
+    --brand: #3b82f6;
+    --brand-2: #eab308;
+    --accent: #10b981;
+    
+    /* Semantic Colors */
+    --success: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    
+    /* Borders & Shadows - Subtle glow effects */
+    --border: rgba(255, 255, 255, 0.08);
+    --border-active: rgba(59, 130, 246, 0.4);
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    
+    /* Panel Accents */
+    --accent-input: var(--brand);
+    --accent-output: var(--brand-2);
+}
+
+/* Dark theme background pattern */
+[data-theme="dark"] .bg-pattern {
+    background: linear-gradient(135deg, #0a0e17 0%, #111827 50%, #0f172a 100%);
+}
+
+[data-theme="dark"] .bg-pattern::before {
+    background: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+}
+
+/* Dark theme body background */
+[data-theme="dark"] body {
+    background: linear-gradient(135deg, #0a0e17 0%, #111827 50%, #0f172a 100%);
+}
+
 /* ===== Reset & Base ===== */
 *, *::before, *::after {
     margin: 0;
@@ -209,6 +259,81 @@ h1 {
 
 .learn-more-btn svg {
     flex-shrink: 0;
+}
+
+/* ===== Theme Toggle Button ===== */
+.theme-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-right: 8px;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--bg-soft);
+    border-color: var(--brand);
+    color: var(--brand);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.theme-toggle-btn:active {
+    transform: translateY(0);
+}
+
+.theme-toggle-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.theme-toggle-btn .icon-sun,
+.theme-toggle-btn .icon-moon {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Light theme: show moon icon (to switch to dark) */
+.theme-toggle-btn .icon-sun {
+    display: none;
+}
+
+.theme-toggle-btn .icon-moon {
+    display: block;
+}
+
+/* Dark theme: show sun icon (to switch to light) */
+[data-theme="dark"] .theme-toggle-btn .icon-sun {
+    display: block;
+}
+
+[data-theme="dark"] .theme-toggle-btn .icon-moon {
+    display: none;
+}
+
+[data-theme="dark"] .theme-toggle-btn {
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .theme-toggle-btn:hover {
+    border-color: var(--brand-2);
+    color: var(--brand-2);
+    box-shadow: 0 0 12px rgba(234, 179, 8, 0.2);
+}
+
+/* Header buttons container */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 /* ===== Main Editor Container ===== */

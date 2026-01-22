@@ -1598,3 +1598,68 @@ fn create_default_ambiguous_topic(
         actions: None,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_detailed_inputs_skips_non_user_inputs() {
+        // Create a JSON that simulates the Salesforce export format with copilotAction:isUserInput
+        let json_str = r#"{
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "title": "Query",
+                    "description": "The search query",
+                    "copilotAction:isUserInput": true
+                },
+                "mode": {
+                    "type": "string",
+                    "title": "Mode",
+                    "description": "The mode to use",
+                    "copilotAction:isUserInput": false
+                },
+                "retrieverMode": {
+                    "type": "string",
+                    "title": "Retriever Mode",
+                    "description": "The retriever mode",
+                    "copilotAction:isUserInput": false
+                }
+            },
+            "required": ["query"]
+        }"#;
+        
+        let input_type: InputOutputType = serde_json::from_str(json_str).unwrap();
+        let rules: Option<ConversionRules> = None;
+        
+        let inputs = build_detailed_inputs(&input_type, &rules);
+        
+        // Should contain "query" but NOT "mode" or "retrieverMode"
+        assert!(inputs.contains_key("query"), "Should contain 'query' input");
+        assert!(!inputs.contains_key("mode"), "Should NOT contain 'mode' input (is_user_input=false)");
+        assert!(!inputs.contains_key("retrieverMode"), "Should NOT contain 'retrieverMode' input (is_user_input=false)");
+    }
+
+    #[test]
+    fn test_build_detailed_inputs_includes_unspecified_user_inputs() {
+        // Inputs without copilotAction:isUserInput should default to true (included)
+        let json_str = r#"{
+            "properties": {
+                "unspecifiedInput": {
+                    "type": "string",
+                    "title": "Unspecified Input",
+                    "description": "An input without is_user_input specified"
+                }
+            }
+        }"#;
+        
+        let input_type: InputOutputType = serde_json::from_str(json_str).unwrap();
+        let rules: Option<ConversionRules> = None;
+        
+        let inputs = build_detailed_inputs(&input_type, &rules);
+        
+        // Should include inputs that don't have is_user_input specified (defaults to true)
+        assert!(inputs.contains_key("unspecifiedInput"), "Should contain input without is_user_input (defaults to true)");
+    }
+}

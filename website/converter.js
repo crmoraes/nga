@@ -63,6 +63,9 @@ const expandOutputBtn = document.getElementById('expandOutput');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize theme first to prevent flash of wrong theme
+    initTheme();
+    
     await loadRules();
     
     // Initialize WASM module
@@ -106,6 +109,78 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize global keyboard handler (consolidated Escape key handling)
     initGlobalKeyboardHandler();
 });
+
+// ============================================================================
+// THEME MANAGEMENT
+// ============================================================================
+
+// Theme storage key
+const THEME_STORAGE_KEY = 'nga-theme-preference';
+
+/**
+ * Initialize theme based on saved preference or system preference
+ */
+function initTheme() {
+    const themeToggle = document.getElementById('themeToggle');
+    
+    // Get saved theme or detect system preference
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    // Determine initial theme
+    let theme;
+    if (savedTheme) {
+        theme = savedTheme;
+    } else if (systemPrefersDark) {
+        theme = 'dark';
+    } else {
+        theme = 'light';
+    }
+    
+    // Apply theme
+    applyTheme(theme);
+    
+    // Set up toggle button listener
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+    
+    // Listen for system preference changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        // Only auto-switch if user hasn't set a preference
+        if (!localStorage.getItem(THEME_STORAGE_KEY)) {
+            applyTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+}
+
+/**
+ * Toggle between light and dark themes
+ */
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    applyTheme(newTheme);
+    
+    // Save preference
+    localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+    
+    // Show toast notification
+    showToast(`Switched to ${newTheme} theme`);
+}
+
+/**
+ * Apply the specified theme
+ * @param {string} theme - 'light' or 'dark'
+ */
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+}
 
 /**
  * Initialize WASM module

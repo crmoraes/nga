@@ -79,9 +79,12 @@ pub struct Property {
     pub description: Option<String>,
     pub items: Option<Box<Property>>,
     pub const_value: Option<serde_json::Value>,
-    // Additional fields from Salesforce exports
+    // Additional fields from Salesforce exports - use copilotAction: prefixed names
+    #[serde(rename = "copilotAction:isUserInput")]
     pub is_user_input: Option<bool>,
+    #[serde(rename = "copilotAction:isDisplayable")]
     pub is_displayable: Option<bool>,
+    #[serde(rename = "copilotAction:isUsedByPlanner")]
     pub is_used_by_planner: Option<bool>,
     pub complex_data_type_name: Option<String>,
     #[serde(rename = "lightning:type")]
