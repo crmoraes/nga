@@ -1,0 +1,74 @@
+daemon off;
+worker_processes <%= ENV['NGINX_WORKERS'] || 4 %>;
+
+events {
+    use epoll;
+    accept_mutex on;
+    worker_connections <%= ENV['NGINX_WORKER_CONNECTIONS'] || 1024 %>;
+}
+
+http {
+    # Inline MIME types for Heroku compatibility
+    types {
+        text/html                             html htm;
+        text/css                              css;
+        text/plain                            txt md;
+        application/javascript                js;
+        application/json                      json;
+        application/wasm                      wasm;
+        image/gif                             gif;
+        image/jpeg                            jpeg jpg;
+        image/png                             png;
+        image/svg+xml                         svg;
+        image/x-icon                          ico;
+        font/woff                             woff;
+        font/woff2                            woff2;
+    }
+    default_type application/octet-stream;
+    sendfile on;
+    server_tokens off;
+
+    # Gzip compression
+    gzip on;
+    gzip_comp_level 2;
+    gzip_min_length 512;
+    gzip_proxied any;
+
+    log_format l2met 'measure#nginx.service=$request_time request_id=$http_x_request_id';
+    access_log logs/nginx/access.log l2met;
+    error_log logs/nginx/error.log;
+
+    server {
+        listen <%= ENV["PORT"] %>;
+        server_name _;
+        keepalive_timeout 5;
+
+        # Root is relative to /app on Heroku
+        root /app;
+        index index.html;
+
+        # HTTP Basic Authentication (enabled if HTTP_AUTH_USER is set)
+        <% if ENV['HTTP_AUTH_USER'] %>
+        auth_basic "Restricted Access";
+        auth_basic_user_file /app/config/.htpasswd;
+        <% end %>
+
+        # SPA fallback - serve index.html for all routes
+        location / {
+            add_header Cache-Control "public, max-age=3600";
+            try_files $uri $uri/ /index.html;
+        }
+
+        # WASM files with correct MIME type and long cache
+        location ~* \.wasm$ {
+            add_header Cache-Control "public, max-age=2592000, immutable";
+            try_files $uri =404;
+        }
+
+        # Static assets caching
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|json|yaml|yml|md)$ {
+            add_header Cache-Control "public, max-age=3600";
+            try_files $uri =404;
+        }
+    }
+}

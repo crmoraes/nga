@@ -1,0 +1,11 @@
+{
+  "name": "NGA Interpreter",
+  "description": "Agentforce AgentScript Interpreter - Convert JSON/YAML to NGA format",
+  "repository": "https://github.com/claudiomoraes/nga",
+  "buildpacks": [
+    {
+      "url": "heroku-community/static"
+    }
+  ],
+  "stack": "heroku-22"
+}

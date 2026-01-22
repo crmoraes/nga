@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+# Generate .htpasswd file from environment variables if they exist
+if [ -n "$HTTP_AUTH_USER" ] && [ -n "$HTTP_AUTH_PASS" ]; then
+    echo "Generating .htpasswd for HTTP Basic Auth..."
+    # Use openssl to generate Apache-compatible password hash
+    HASHED_PASS=$(openssl passwd -apr1 "$HTTP_AUTH_PASS")
+    echo "$HTTP_AUTH_USER:$HASHED_PASS" > /app/config/.htpasswd
+    echo "HTTP Basic Auth enabled for user: $HTTP_AUTH_USER"
+else
+    echo "HTTP_AUTH_USER or HTTP_AUTH_PASS not set - auth disabled"
+    # Create empty file so nginx doesn't fail
+    touch /app/config/.htpasswd
+fi
+
+# Start nginx
+exec bin/start-nginx-solo
