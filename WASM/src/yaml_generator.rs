@@ -61,6 +61,12 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
     output.push_str(&format!("    all_additional_locales: {}\n", format_boolean_value(nga.language.all_additional_locales)));
     output.push('\n');
     
+    // Knowledge section
+    output.push_str("knowledge:\n");
+    output.push_str(&format!("    rag_feature_config_id: \"{}\"\n", nga.knowledge.rag_feature_config_id));
+    output.push_str(&format!("    citations_enabled: {}\n", format_boolean_value(nga.knowledge.citations_enabled)));
+    output.push('\n');
+    
     // Connection section
     let mut conn_keys: Vec<_> = nga.connections.keys().collect();
     conn_keys.sort();

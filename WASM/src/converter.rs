@@ -91,6 +91,10 @@ pub fn convert_agentforce_format(input: &AgentforceInput, rules: &Option<Convers
             additional_locales: format_locales(input.secondary_locales.as_ref()),
             all_additional_locales: get_default_language_values().1,
         },
+        knowledge: KnowledgeSection {
+            rag_feature_config_id: String::new(),
+            citations_enabled: false,
+        },
         topics: HashMap::new(),
         connections: HashMap::new(),
     };
@@ -868,6 +872,10 @@ pub fn convert_simple_format(
             additional_locales: String::new(),
             all_additional_locales: lang_defaults.1,
         },
+        knowledge: KnowledgeSection {
+            rag_feature_config_id: String::new(),
+            citations_enabled: false,
+        },
         topics: HashMap::new(),
         connections: HashMap::new(),
     };
@@ -1107,6 +1115,10 @@ pub fn convert_generic_format(
                 .unwrap_or_else(|| lang_defaults.0.clone()),
             additional_locales: String::new(),
             all_additional_locales: lang_defaults.1,
+        },
+        knowledge: KnowledgeSection {
+            rag_feature_config_id: String::new(),
+            citations_enabled: false,
         },
         topics: HashMap::new(),
         connections: HashMap::new(),

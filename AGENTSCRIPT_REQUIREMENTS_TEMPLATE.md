@@ -344,6 +344,10 @@ language:
     additional_locales: "es, es_MX"
     all_additional_locales: False
 
+knowledge:
+    rag_feature_config_id: ""
+    citations_enabled: False
+
 connection messaging:
     adaptive_response_allowed: True
 
@@ -461,7 +465,7 @@ Using the AgentScript Reference provided, please generate a complete AgentScript
 file based on my requirements. Follow these guidelines:
 
 1. Use the exact YAML structure from the reference
-2. Include all sections: system, config, variables, language, connection, and topics
+2. Include all sections: system, config, variables, language, knowledge, connection, and topics
 3. Generate reasoning.instructions with the -> and | syntax
 4. Include reasoning.actions with @actions references and with clauses
 5. Include full action definitions in the actions section
@@ -503,6 +507,10 @@ language:
     default_locale: "en_US"
     additional_locales: "es, es_MX"
     all_additional_locales: False
+
+knowledge:
+    rag_feature_config_id: ""
+    citations_enabled: False
 
 connection messaging:
     adaptive_response_allowed: True

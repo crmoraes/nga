@@ -75,7 +75,7 @@ After using the interpreter output, the following items require **manual action*
 |------|---------------------|
 | **Flow Actions** | Custom actions that call Flows will show the **Flow record ID** (not the API name) in the output. You must **manually re-select the Flow** for each action in Agentforce Builder. |
 | **Context Filters** | Context Filters are **NOT converted**. Review your original Context Filter logic and implement it using Agentforce Builder's **deterministic features** if needed. |
-| **Data Library** | Data Library assignments are **NOT included**. You must **manually assign the Data Library** in Agentforce Builder if your agent requires one. |
+| **Data Library** | A `knowledge` section is generated with empty defaults. You must **manually configure the `rag_feature_config_id`** in Agentforce Builder if your agent requires a Data Library. |
 
 > **Tip:** Use the Conversion Report to identify all Flow actions that may need attention.
 
@@ -383,6 +383,21 @@ The interpreter automatically adds essential topics if they're missing from your
 - **Escalation topic** - For transferring to human agents
 - **Off-topic topic** - For handling unrelated questions
 - **Ambiguous question topic** - For unclear requests
+
+### Knowledge Section (Data Library)
+
+The interpreter automatically generates a `knowledge` section in the output for Data Library configuration:
+
+```yaml
+knowledge:
+    rag_feature_config_id: ""
+    citations_enabled: False
+```
+
+- **rag_feature_config_id** - The ID of the RAG (Retrieval Augmented Generation) feature configuration. Leave empty if not using a Data Library.
+- **citations_enabled** - Whether to enable citations in responses. Set to `True` if you want the agent to include source citations.
+
+> **Note:** Data Library assignments are **NOT included** from the input. You must **manually configure** the `rag_feature_config_id` in Agentforce Builder if your agent requires a Data Library.
 
 ### Topic Transitions
 

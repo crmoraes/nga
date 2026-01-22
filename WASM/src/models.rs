@@ -165,6 +165,7 @@ pub struct NGAOutput {
     pub topics: HashMap<String, Topic>,
     pub variables: HashMap<String, Variable>,
     pub language: LanguageSection,
+    pub knowledge: KnowledgeSection,
     #[serde(flatten)]
     pub connections: HashMap<String, ConnectionSection>,
 }
@@ -203,6 +204,12 @@ pub struct LanguageSection {
     pub default_locale: String,
     pub additional_locales: String,
     pub all_additional_locales: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KnowledgeSection {
+    pub rag_feature_config_id: String,
+    pub citations_enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
