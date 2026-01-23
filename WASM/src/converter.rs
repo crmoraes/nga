@@ -745,11 +745,13 @@ fn build_detailed_inputs(
                 .map(|r| r.contains(name))
                 .unwrap_or(false);
             
-            // Extract complex_data_type_name from lightning:type or $ref
-            let complex_type = prop.complex_data_type_name.clone()
-                .or_else(|| prop.lightning_type.clone())
+            // Extract complex_data_type_name from input's lightning:type field
+            // Note: lightning:type exists only in the input format (Salesforce JSON)
+            //       complex_data_type_name exists only in the output format (NGA YAML)
+            // The value from lightning:type populates complex_data_type_name in the output
+            let complex_type = prop.lightning_type.clone()
                 .or_else(|| prop.ref_type.as_ref().map(|r| {
-                    // Extract type name from $ref like "#/$defs/lightning__recordInfoType"
+                    // Fallback: Extract type name from $ref like "#/$defs/lightning__recordInfoType"
                     r.split('/').next_back().unwrap_or(r).to_string()
                 }));
             
@@ -787,17 +789,19 @@ fn build_detailed_outputs(
             let is_displayable = prop.is_displayable.unwrap_or(false);
             let is_used_by_planner = prop.is_used_by_planner.unwrap_or(true);
             
-            // Extract complex_data_type_name based on output type
+            // Extract complex_data_type_name from input's lightning:type field
+            // Note: lightning:type exists only in the input format (Salesforce JSON)
+            //       complex_data_type_name exists only in the output format (NGA YAML)
+            // The value from lightning:type populates complex_data_type_name in the output
             let complex_type = if prop_type == "list[object]" {
                 // For list[object] types, always use lightning__recordInfoType
                 // (overrides lightning__listType from source)
                 Some("lightning__recordInfoType".to_string())
             } else {
-                // For all other types (including object), extract from source
-                let source_type = prop.complex_data_type_name.clone()
-                    .or_else(|| prop.lightning_type.clone())
+                // For all other types (including object), extract from lightning:type
+                let source_type = prop.lightning_type.clone()
                     .or_else(|| prop.ref_type.as_ref().map(|r| {
-                        // Extract type name from $ref like "#/$defs/lightning__richTextType"
+                        // Fallback: Extract type name from $ref like "#/$defs/lightning__richTextType"
                         r.split('/').next_back().unwrap_or(r).to_string()
                     }));
                 
@@ -1614,6 +1618,150 @@ fn create_default_ambiguous_topic(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_build_detailed_inputs_extracts_complex_data_type_name_from_lightning_type() {
+        // Test that lightning:type is correctly extracted as complex_data_type_name
+        let json_str = r##"{
+            "properties": {
+                "caseRecord": {
+                    "title": "Case record",
+                    "description": "Stores the case record to be updated with a comment.",
+                    "$ref": "#/$defs/lightning__recordInfoType",
+                    "lightning:type": "lightning__recordInfoType",
+                    "copilotAction:isUserInput": true
+                },
+                "caseComment": {
+                    "title": "Case comment",
+                    "description": "Stores the text of the comment to add to the case.",
+                    "type": "string",
+                    "$ref": "#/$defs/lightning__textType",
+                    "lightning:type": "lightning__textType",
+                    "copilotAction:isUserInput": true
+                }
+            },
+            "required": ["caseRecord", "caseComment"]
+        }"##;
+        
+        let input_type: InputOutputType = serde_json::from_str(json_str).unwrap();
+        let rules: Option<ConversionRules> = None;
+        
+        let inputs = build_detailed_inputs(&input_type, &rules);
+        
+        // Verify caseRecord has complex_data_type_name from lightning:type
+        assert!(inputs.contains_key("caseRecord"), "Should contain 'caseRecord' input");
+        let case_record = &inputs["caseRecord"];
+        assert_eq!(
+            case_record.complex_data_type_name,
+            Some("lightning__recordInfoType".to_string()),
+            "caseRecord should have complex_data_type_name extracted from lightning:type"
+        );
+        
+        // Verify caseComment has complex_data_type_name from lightning:type
+        assert!(inputs.contains_key("caseComment"), "Should contain 'caseComment' input");
+        let case_comment = &inputs["caseComment"];
+        assert_eq!(
+            case_comment.complex_data_type_name,
+            Some("lightning__textType".to_string()),
+            "caseComment should have complex_data_type_name extracted from lightning:type"
+        );
+    }
+
+    #[test]
+    fn test_build_detailed_outputs_extracts_complex_data_type_name_from_lightning_type() {
+        // Test that lightning:type is correctly extracted for outputs
+        let json_str = r##"{
+            "properties": {
+                "contactRecord": {
+                    "title": "contactRecord",
+                    "description": "The contact record associated with the identified customer.",
+                    "$ref": "#/$defs/lightning__recordInfoType",
+                    "lightning:type": "lightning__recordInfoType",
+                    "copilotAction:isDisplayable": true,
+                    "copilotAction:isUsedByPlanner": true
+                },
+                "outcomeMessage": {
+                    "title": "Outcome message",
+                    "description": "Stores the message that lets the customer know whether the comment was successfully added.",
+                    "type": "string",
+                    "$ref": "#/$defs/lightning__textType",
+                    "lightning:type": "lightning__textType",
+                    "copilotAction:isDisplayable": true,
+                    "copilotAction:isUsedByPlanner": true
+                },
+                "knowledgeSummary": {
+                    "title": "Knowledge Summary",
+                    "description": "A string formatted as rich text.",
+                    "type": "string",
+                    "$ref": "#/$defs/lightning__richTextType",
+                    "lightning:type": "lightning__richTextType",
+                    "copilotAction:isDisplayable": true,
+                    "copilotAction:isUsedByPlanner": true
+                }
+            }
+        }"##;
+        
+        let output_type: InputOutputType = serde_json::from_str(json_str).unwrap();
+        let rules: Option<ConversionRules> = None;
+        
+        let outputs = build_detailed_outputs(&output_type, &rules);
+        
+        // Verify contactRecord has complex_data_type_name from lightning:type
+        assert!(outputs.contains_key("contactRecord"), "Should contain 'contactRecord' output");
+        let contact_record = &outputs["contactRecord"];
+        assert_eq!(
+            contact_record.complex_data_type_name,
+            Some("lightning__recordInfoType".to_string()),
+            "contactRecord should have complex_data_type_name extracted from lightning:type"
+        );
+        
+        // Verify outcomeMessage has complex_data_type_name from lightning:type
+        assert!(outputs.contains_key("outcomeMessage"), "Should contain 'outcomeMessage' output");
+        let outcome_message = &outputs["outcomeMessage"];
+        assert_eq!(
+            outcome_message.complex_data_type_name,
+            Some("lightning__textType".to_string()),
+            "outcomeMessage should have complex_data_type_name extracted from lightning:type"
+        );
+        
+        // Verify knowledgeSummary has complex_data_type_name from lightning:type
+        assert!(outputs.contains_key("knowledgeSummary"), "Should contain 'knowledgeSummary' output");
+        let knowledge_summary = &outputs["knowledgeSummary"];
+        assert_eq!(
+            knowledge_summary.complex_data_type_name,
+            Some("lightning__richTextType".to_string()),
+            "knowledgeSummary should have complex_data_type_name extracted from lightning:type"
+        );
+    }
+
+    #[test]
+    fn test_build_detailed_inputs_falls_back_to_ref_when_no_lightning_type() {
+        // Test fallback to $ref when lightning:type is not present
+        let json_str = r##"{
+            "properties": {
+                "queryInput": {
+                    "title": "Query",
+                    "description": "The search query",
+                    "type": "string",
+                    "$ref": "#/$defs/lightning__textType",
+                    "copilotAction:isUserInput": true
+                }
+            }
+        }"##;
+        
+        let input_type: InputOutputType = serde_json::from_str(json_str).unwrap();
+        let rules: Option<ConversionRules> = None;
+        
+        let inputs = build_detailed_inputs(&input_type, &rules);
+        
+        assert!(inputs.contains_key("queryInput"), "Should contain 'queryInput' input");
+        let query_input = &inputs["queryInput"];
+        assert_eq!(
+            query_input.complex_data_type_name,
+            Some("lightning__textType".to_string()),
+            "queryInput should have complex_data_type_name extracted from $ref when lightning:type is absent"
+        );
+    }
 
     #[test]
     fn test_build_detailed_inputs_skips_non_user_inputs() {

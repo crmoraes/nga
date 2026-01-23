@@ -86,7 +86,8 @@ pub struct Property {
     pub is_displayable: Option<bool>,
     #[serde(rename = "copilotAction:isUsedByPlanner")]
     pub is_used_by_planner: Option<bool>,
-    pub complex_data_type_name: Option<String>,
+    // lightning:type is the source field in Salesforce input format
+    // Its value is used to populate complex_data_type_name in the NGA output format
     #[serde(rename = "lightning:type")]
     pub lightning_type: Option<String>,
     #[serde(rename = "$ref")]
