@@ -1,17 +1,52 @@
 #!/usr/bin/env bash
 
-# Generate .htpasswd file from environment variables if they exist
-if [ -n "$HTTP_AUTH_USER" ] && [ -n "$HTTP_AUTH_PASS" ]; then
-    echo "Generating .htpasswd for HTTP Basic Auth..."
-    # Use openssl to generate Apache-compatible password hash
-    HASHED_PASS=$(openssl passwd -apr1 "$HTTP_AUTH_PASS")
-    echo "$HTTP_AUTH_USER:$HASHED_PASS" > /app/config/.htpasswd
-    echo "HTTP Basic Auth enabled for user: $HTTP_AUTH_USER"
+# NGA Interpreter startup script
+# Starts both the auth server and nginx
+
+set -e
+
+# Configuration
+AUTH_PORT=${AUTH_PORT:-3001}
+export AUTH_PORT
+
+echo "=========================================="
+echo "NGA Interpreter Startup"
+echo "=========================================="
+
+# Check password protection status
+if [ -n "$HTTP_AUTH_PASS" ]; then
+    echo "Password protection: ENABLED"
+    echo "Session timeout: 1 hour"
 else
-    echo "HTTP_AUTH_USER or HTTP_AUTH_PASS not set - auth disabled"
-    # Create empty file so nginx doesn't fail
-    touch /app/config/.htpasswd
+    echo "Password protection: DISABLED"
 fi
 
-# Start nginx
+# Start the auth server in background
+echo "Starting auth server on port $AUTH_PORT..."
+node auth-server.js &
+AUTH_PID=$!
+
+# Wait for auth server to be ready
+echo "Waiting for auth server to start..."
+sleep 2
+
+# Check if auth server started successfully
+if ! kill -0 $AUTH_PID 2>/dev/null; then
+    echo "ERROR: Auth server failed to start"
+    exit 1
+fi
+
+echo "Auth server started (PID: $AUTH_PID)"
+
+# Handle shutdown - stop both processes
+cleanup() {
+    echo "Shutting down..."
+    kill $AUTH_PID 2>/dev/null || true
+    exit 0
+}
+trap cleanup SIGTERM SIGINT
+
+# Start nginx (this will run in foreground)
+echo "Starting nginx..."
+echo "=========================================="
 exec bin/start-nginx-solo

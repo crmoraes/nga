@@ -1475,4 +1475,137 @@ function handleEscapeKey() {
 // conversion will fail with an error message instead of falling back to JavaScript.
 // ============================================================================
 
+// ============================================================================
+// SESSION MANAGEMENT
+// ============================================================================
+
+// Session update interval (update every minute)
+const SESSION_UPDATE_INTERVAL_MS = 60000;
+let sessionUpdateTimer = null;
+
+/**
+ * Get the base path for API calls (handles /nga/ subdirectory deployment)
+ */
+function getBasePath() {
+    const path = window.location.pathname;
+    if (path.includes('/nga/')) {
+        return '/nga';
+    }
+    return '';
+}
+
+/**
+ * Initialize session management (logout button, session time display)
+ */
+function initSessionManagement() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    const sessionTimeEl = document.getElementById('sessionTime');
+    
+    if (!logoutBtn) return;
+    
+    // Check session status on load
+    checkSessionStatus();
+    
+    // Set up logout button click handler
+    logoutBtn.addEventListener('click', handleLogout);
+    
+    // Periodically update session time
+    sessionUpdateTimer = setInterval(checkSessionStatus, SESSION_UPDATE_INTERVAL_MS);
+}
+
+/**
+ * Check current session status and update UI
+ */
+async function checkSessionStatus() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    const sessionTimeEl = document.getElementById('sessionTime');
+    
+    if (!logoutBtn) return;
+    
+    try {
+        const basePath = getBasePath();
+        const response = await fetch(basePath + '/api/session', {
+            credentials: 'same-origin'
+        });
+        
+        const data = await response.json();
+        
+        if (data.authenticated && data.passwordProtectionEnabled) {
+            // Show logout button
+            logoutBtn.classList.remove('hidden');
+            
+            // Update session time remaining
+            if (sessionTimeEl && data.timeRemainingMinutes !== undefined) {
+                const minutes = data.timeRemainingMinutes;
+                if (minutes <= 5) {
+                    sessionTimeEl.textContent = `(${minutes}m left)`;
+                    sessionTimeEl.classList.remove('hidden');
+                    sessionTimeEl.classList.add('session-warning');
+                } else {
+                    sessionTimeEl.classList.add('hidden');
+                }
+            }
+        } else if (!data.passwordProtectionEnabled) {
+            // Password protection is disabled, hide logout button
+            logoutBtn.classList.add('hidden');
+        } else {
+            // Not authenticated, redirect to login
+            const basePath = getBasePath();
+            window.location.href = basePath + '/login.html';
+        }
+    } catch (error) {
+        console.error('Error checking session:', error);
+        // On error, hide logout button (fail safe)
+        logoutBtn.classList.add('hidden');
+    }
+}
+
+/**
+ * Handle logout button click
+ */
+async function handleLogout() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    try {
+        // Disable button during logout
+        if (logoutBtn) {
+            logoutBtn.disabled = true;
+        }
+        
+        const basePath = getBasePath();
+        const response = await fetch(basePath + '/api/logout', {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            // Clear session update timer
+            if (sessionUpdateTimer) {
+                clearInterval(sessionUpdateTimer);
+            }
+            
+            // Redirect to login page
+            window.location.href = basePath + '/login.html';
+        } else {
+            console.error('Logout failed');
+            showToast('Logout failed. Please try again.');
+            if (logoutBtn) {
+                logoutBtn.disabled = false;
+            }
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+        showToast('Connection error. Please try again.');
+        if (logoutBtn) {
+            logoutBtn.disabled = false;
+        }
+    }
+}
+
+// Initialize session management after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Small delay to ensure other initializations complete first
+    setTimeout(initSessionManagement, 100);
+});
+
 })();

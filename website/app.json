@@ -4,8 +4,22 @@
   "repository": "https://github.com/claudiomoraes/nga",
   "buildpacks": [
     {
-      "url": "heroku-community/static"
+      "url": "heroku/nodejs"
     }
   ],
-  "stack": "heroku-22"
+  "stack": "heroku-24",
+  "env": {
+    "HTTP_AUTH_PASS": {
+      "description": "Password for accessing the application",
+      "required": false
+    },
+    "SESSION_SECRET": {
+      "description": "Secret for signing session cookies (auto-generated if not set)",
+      "required": false
+    },
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production"
+    }
+  }
 }

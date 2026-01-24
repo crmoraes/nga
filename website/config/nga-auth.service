@@ -1,0 +1,16 @@
+[Unit]
+Description=NGA Auth Server
+After=network.target
+
+[Service]
+Type=simple
+User=cmoraes
+WorkingDirectory=/home/cmoraes/projects/nga/website
+Environment=HTTP_AUTH_PASS=af2026!
+Environment=AUTH_PORT=3001
+ExecStart=/usr/bin/node auth-server.js
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
