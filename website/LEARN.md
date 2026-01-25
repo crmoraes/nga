@@ -73,11 +73,11 @@ After using the interpreter output, the following items require **manual action*
 
 | Item | What You Need to Do |
 |------|---------------------|
-| **Flow Actions** | Custom actions that call Flows will show the **Flow record ID** (not the API name) in the output. You must **manually re-select the Flow** for each action in Agentforce Builder. |
+| **Custom Actions** | Custom actions (flow, Apex, others) will show the **target record ID** (not the API name) in the output. You must **manually re-select the target** for each action in Agentforce Builder. |
 | **Context Filters** | Context Filters are **NOT converted**. Review your original Context Filter logic and implement it using Agentforce Builder's **deterministic features** if needed. |
 | **Data Library** | A `knowledge` section is generated with empty defaults. You must **manually configure the `rag_feature_config_id`** in Agentforce Builder if your agent requires a Data Library. |
 
-> **Tip:** Use the Conversion Report to identify all Flow actions that may need attention.
+> **Tip:** Use the Conversion Report to identify all custom actions (Flow, Apex, standardInvocableAction, etc.) that need manual re-selection of targets in Agentforce Builder.
 
 ---
 
@@ -337,11 +337,14 @@ If the interpreter found variables in your instructions that needed conversion:
 #### 5. Other Important Notes
 
 Helpful warnings and recommendations:
+- **Custom actions requiring manual review** - Actions (flow, Apex, standardInvocableAction, etc.) that show record IDs instead of API names and require manual re-selection in Agentforce Builder
 - **Missing descriptions** - Topics, actions, or variables that don't have descriptions
 - **Topics without actions** - Topics that may need actions added
 - **Conversion notes** - Important information about the conversion process
 
 These notes help you identify areas that might need attention or improvement.
+
+> **Important:** The report will specifically list any custom actions that use record IDs as targets. You **must** manually re-select these targets in Agentforce Builder, as the record ID cannot be used directly.
 
 ---
 

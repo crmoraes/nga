@@ -214,27 +214,40 @@ fn is_alphanumeric_id(target_name: &str) -> bool {
     starts_with_number || has_consecutive_numbers
 }
 
-/// Represents a flow action with alphanumeric target name that needs review
+/// Represents a custom action (flow, apex, etc.) with alphanumeric target name that needs review
 #[derive(Debug, Clone)]
-pub struct FlowActionReview {
+pub struct CustomActionReview {
     pub topic_name: String,
     pub action_name: String,
+    pub action_type: String,
     pub target_name: String,
 }
 
-/// Analyze flow actions with alphanumeric target names that may need review
-pub fn analyze_flow_actions_with_alphanumeric_targets(topics: &[TopicReport]) -> Vec<FlowActionReview> {
+/// Check if an action type is a custom action that uses external targets
+/// Custom actions include: flow, apex, standardInvocableAction, and similar invocable types
+fn is_custom_action_type(action_type: &str) -> bool {
+    let action_type_lower = action_type.to_lowercase();
+    matches!(
+        action_type_lower.as_str(),
+        "flow" | "apex" | "standardinvocableaction" | "invocableaction" | 
+        "generatepromptresponse" | "externalservice"
+    )
+}
+
+/// Analyze custom actions (flow, apex, etc.) with alphanumeric target names that may need review
+/// These actions show the target record ID instead of the API name in the output,
+/// requiring manual re-selection in Agentforce Builder
+pub fn analyze_custom_actions_with_alphanumeric_targets(topics: &[TopicReport]) -> Vec<CustomActionReview> {
     let mut results = Vec::new();
     
     for topic in topics {
         for action in &topic.actions {
-            // Check if action type is "flow" (case insensitive)
-            let is_flow = action.action_type.to_lowercase() == "flow";
-            
-            if is_flow && is_alphanumeric_id(&action.target) {
-                results.push(FlowActionReview {
+            // Check if action type is a custom action type (flow, apex, standardInvocableAction, etc.)
+            if is_custom_action_type(&action.action_type) && is_alphanumeric_id(&action.target) {
+                results.push(CustomActionReview {
                     topic_name: topic.name.clone(),
                     action_name: action.name.clone(),
+                    action_type: action.action_type.clone(),
                     target_name: action.target.clone(),
                 });
             }
@@ -329,8 +342,12 @@ fn extract_topics_from_input(input: &AgentforceInput) -> Vec<TopicReport> {
                         
                         let action_label = func.label.clone().unwrap_or_else(|| action_name.clone());
                         let action_description = func.description.clone().unwrap_or_else(|| "No description".to_string());
+                        // Match the converter logic: invocation_target_name -> invocation_target_id -> func.name
+                        // This ensures we capture the actual target value that ends up in the output,
+                        // which may be a record ID if invocation_target_name is not available
                         let action_target = func.invocation_target_name.clone()
-                            .or_else(|| func.invocation_target_type.clone())
+                            .or_else(|| func.invocation_target_id.clone())
+                            .or_else(|| Some(func.name.clone()))
                             .unwrap_or_else(|| "N/A".to_string());
                         let action_type = func.invocation_target_type.clone().unwrap_or_else(|| "unknown".to_string());
                         
@@ -557,22 +574,29 @@ fn generate_analysis_notes(
         ));
     }
     
-    // Check for flow actions with alphanumeric target names (likely Salesforce record IDs)
-    let flow_actions_to_review = analyze_flow_actions_with_alphanumeric_targets(topics);
-    if !flow_actions_to_review.is_empty() {
+    // Check for custom actions (flow, apex, etc.) with alphanumeric target names (likely Salesforce record IDs)
+    let custom_actions_to_review = analyze_custom_actions_with_alphanumeric_targets(topics);
+    if !custom_actions_to_review.is_empty() {
         notes.push(format!(
-            "- ⚠️ **REVIEW REQUIRED:** {} flow action(s) have alphanumeric target names that appear to be Salesforce record IDs rather than flow API names:",
-            flow_actions_to_review.len()
+            "- ⚠️ **MANUAL ACTION REQUIRED:** {} custom action(s) have target record IDs instead of API names:",
+            custom_actions_to_review.len()
         ));
-        for action_review in &flow_actions_to_review {
+        notes.push("  - **Custom actions (flow, Apex, standardInvocableAction, etc.) show the target record ID in the output.**".to_string());
+        notes.push("  - **You must manually re-select the target for each action in Agentforce Builder.**".to_string());
+        notes.push(String::new());
+        notes.push("  | Topic | Action | Type | Target (Record ID) |".to_string());
+        notes.push("  |-------|--------|------|-------------------|".to_string());
+        for action_review in &custom_actions_to_review {
             notes.push(format!(
-                "  - **Topic:** `{}` → **Action:** `{}` → **Target:** `{}`",
+                "  | `{}` | `{}` | {} | `{}` |",
                 action_review.topic_name,
                 action_review.action_name,
+                action_review.action_type,
                 action_review.target_name
             ));
         }
-        notes.push("  - Please verify these flow references and replace with the correct flow API names if needed.".to_string());
+        notes.push(String::new());
+        notes.push("  - **Steps to fix:** In Agentforce Builder, navigate to each topic/action listed above and manually select the correct target from the available options.".to_string());
     }
     
     // Conversion metadata notes
@@ -595,4 +619,158 @@ pub struct ReportMetadata {
     pub has_variables_with_dollar: bool,
     pub alert_message: Option<String>,
     pub status_suffix: Option<String>,
+}
+
+// ============================================================================
+// TESTS
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_alphanumeric_id_salesforce_record_id() {
+        // Typical Salesforce record IDs (15 or 18 characters)
+        assert!(is_alphanumeric_id("3A7x00000004CqWEAU"));
+        assert!(is_alphanumeric_id("001xx000003DGbYAAW"));
+        assert!(is_alphanumeric_id("172Wt00000HG6ShIAL"));
+    }
+
+    #[test]
+    fn test_is_alphanumeric_id_api_names_are_not_ids() {
+        // API names with underscores are NOT record IDs
+        assert!(!is_alphanumeric_id("SvcCopilotTmpl__GetCaseByCaseNumber"));
+        assert!(!is_alphanumeric_id("MyFlow_v1"));
+        assert!(!is_alphanumeric_id("Get_Customer_Cases"));
+    }
+
+    #[test]
+    fn test_is_alphanumeric_id_regular_names_are_not_ids() {
+        // Regular flow names should NOT be detected as IDs
+        assert!(!is_alphanumeric_id("GetCaseByCaseNumber"));
+        assert!(!is_alphanumeric_id("MyTestFlow"));
+        assert!(!is_alphanumeric_id("CustomerService"));
+    }
+
+    #[test]
+    fn test_is_custom_action_type() {
+        // Custom action types that should be detected
+        assert!(is_custom_action_type("flow"));
+        assert!(is_custom_action_type("Flow"));
+        assert!(is_custom_action_type("FLOW"));
+        assert!(is_custom_action_type("apex"));
+        assert!(is_custom_action_type("Apex"));
+        assert!(is_custom_action_type("standardInvocableAction"));
+        assert!(is_custom_action_type("StandardInvocableAction"));
+        assert!(is_custom_action_type("invocableAction"));
+        assert!(is_custom_action_type("generatePromptResponse"));
+        assert!(is_custom_action_type("externalService"));
+        
+        // Types that should NOT be detected as custom actions
+        assert!(!is_custom_action_type("escalation"));
+        assert!(!is_custom_action_type("unknown"));
+        assert!(!is_custom_action_type("transition"));
+    }
+
+    #[test]
+    fn test_analyze_custom_actions_detects_flow_with_record_id() {
+        let topics = vec![
+            TopicReport {
+                name: "case_management".to_string(),
+                label: "Case Management".to_string(),
+                description: "Handles cases".to_string(),
+                is_start: false,
+                actions: vec![
+                    ActionReport {
+                        name: "GetCase".to_string(),
+                        label: "Get Case".to_string(),
+                        description: "Gets a case".to_string(),
+                        target: "3A7x00000004CqWEAU".to_string(), // Record ID
+                        action_type: "flow".to_string(),
+                    },
+                ],
+            },
+        ];
+
+        let results = analyze_custom_actions_with_alphanumeric_targets(&topics);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].action_name, "GetCase");
+        assert_eq!(results[0].action_type, "flow");
+        assert_eq!(results[0].target_name, "3A7x00000004CqWEAU");
+    }
+
+    #[test]
+    fn test_analyze_custom_actions_detects_apex_with_record_id() {
+        let topics = vec![
+            TopicReport {
+                name: "customer_service".to_string(),
+                label: "Customer Service".to_string(),
+                description: "Handles customer inquiries".to_string(),
+                is_start: false,
+                actions: vec![
+                    ActionReport {
+                        name: "SendEmail".to_string(),
+                        label: "Send Email".to_string(),
+                        description: "Sends an email".to_string(),
+                        target: "001xx000003DGbYAAW".to_string(), // Record ID
+                        action_type: "apex".to_string(),
+                    },
+                ],
+            },
+        ];
+
+        let results = analyze_custom_actions_with_alphanumeric_targets(&topics);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].action_name, "SendEmail");
+        assert_eq!(results[0].action_type, "apex");
+    }
+
+    #[test]
+    fn test_analyze_custom_actions_ignores_api_names() {
+        let topics = vec![
+            TopicReport {
+                name: "case_management".to_string(),
+                label: "Case Management".to_string(),
+                description: "Handles cases".to_string(),
+                is_start: false,
+                actions: vec![
+                    ActionReport {
+                        name: "GetCase".to_string(),
+                        label: "Get Case".to_string(),
+                        description: "Gets a case".to_string(),
+                        target: "SvcCopilotTmpl__GetCaseByCaseNumber".to_string(), // API name
+                        action_type: "flow".to_string(),
+                    },
+                ],
+            },
+        ];
+
+        let results = analyze_custom_actions_with_alphanumeric_targets(&topics);
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn test_analyze_custom_actions_ignores_non_custom_types() {
+        let topics = vec![
+            TopicReport {
+                name: "escalation".to_string(),
+                label: "Escalation".to_string(),
+                description: "Handles escalation".to_string(),
+                is_start: false,
+                actions: vec![
+                    ActionReport {
+                        name: "Escalate".to_string(),
+                        label: "Escalate".to_string(),
+                        description: "Escalates to human".to_string(),
+                        target: "3A7x00000004CqWEAU".to_string(), // Record ID but escalation type
+                        action_type: "escalation".to_string(),
+                    },
+                ],
+            },
+        ];
+
+        let results = analyze_custom_actions_with_alphanumeric_targets(&topics);
+        assert_eq!(results.len(), 0); // Escalation type is not a custom action
+    }
 }

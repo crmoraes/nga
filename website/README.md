@@ -548,7 +548,12 @@ Warnings and recommendations:
 - Actions missing descriptions
 - Variables missing descriptions
 - Conversion metadata notes (e.g., variable conversion status)
-- **Flow actions with alphanumeric target names**: When an action has `invocationTargetType` equal to `flow` and the `invocationTargetName` is a combination of numbers and letters (e.g., `3A7x00000004CqWEAU`), the report will flag this for review. These alphanumeric identifiers are typically Salesforce record IDs rather than human-readable flow API names. The report includes the **Topic name** and **Action name** where this occurs, so you can easily locate and verify the correct flow reference.
+- **Custom actions with record ID targets**: When a custom action (flow, apex, standardInvocableAction, invocableAction, generatePromptResponse, externalService) has an alphanumeric target name (e.g., `3A7x00000004CqWEAU`), the report will flag it for **manual review**. These alphanumeric identifiers are typically Salesforce record IDs rather than human-readable API names. The report includes:
+  - A clear warning that manual action is required
+  - A table listing **Topic**, **Action**, **Type**, and **Target (Record ID)** for each affected action
+  - Instructions to manually re-select the target in Agentforce Builder
+
+> **Important:** Custom actions show the target record ID (not the API name) in the converted output. You **must** manually re-select the target for each flagged action in Agentforce Builder.
 
 ### Report Format
 
@@ -605,12 +610,13 @@ NGA/
 │   └── agent.json          # Sample Agentforce export (loaded dynamically by "Load Sample" button)
 └── WASM/
     ├── src/
-    │   ├── lib.rs          # WASM entry point and exports
-    │   ├── models.rs       # Data structures
-    │   ├── converter.rs    # Core conversion logic (IP protected)
-    │   ├── yaml_generator.rs # YAML generation
-    │   ├── helpers.rs      # Utility functions
-    │   └── variable_processor.rs # Variable processing
+    │   ├── lib.rs              # WASM entry point and exports
+    │   ├── models.rs           # Data structures
+    │   ├── converter.rs        # Core conversion logic (IP protected)
+    │   ├── yaml_generator.rs   # YAML generation
+    │   ├── helpers.rs          # Utility functions
+    │   ├── variable_processor.rs # Variable processing
+    │   └── report_generator.rs # Conversion report generation (IP protected)
     ├── Cargo.toml          # Rust project configuration
     └── README.md           # WASM build instructions
 ```
@@ -723,6 +729,7 @@ The core conversion logic has been moved to **WebAssembly (WASM)** to protect in
 - ✅ Reasoning action reference generation (`build_reasoning_action_references`)
 - ✅ Variable processing and detection
 - ✅ Topic/action conversion logic
+- ✅ Report generation logic (`generate_report_data`, `analyze_custom_actions_with_alphanumeric_targets`, etc.)
 - ✅ All helper functions with business logic
 
 **What's NOT Protected (Public):**
