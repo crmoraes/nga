@@ -97,6 +97,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Learn More modal
     initLearnMoreModal();
     
+    // Initialize License modal
+    initLicenseModal();
+    
     // Initialize Conversion Report modal
     initConversionReportModal();
     
@@ -249,6 +252,98 @@ function initLearnMoreModal() {
 function closeModal(modal) {
     modal.classList.remove('active');
     document.body.style.overflow = '';
+}
+
+// ============================================================================
+// LICENSE MODAL
+// ============================================================================
+
+function initLicenseModal() {
+    const licenseBtn = document.getElementById('licenseBtn');
+    const modal = document.getElementById('licenseModal');
+    const closeBtn = document.getElementById('closeLicenseModal');
+    const modalContent = document.getElementById('licenseModalContent');
+    
+    let licenseLoaded = false;
+    
+    if (!licenseBtn || !modal || !closeBtn || !modalContent) {
+        console.warn('License modal elements not found');
+        return;
+    }
+    
+    // Open modal
+    licenseBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        if (!licenseLoaded) {
+            await loadLicense(modalContent);
+            licenseLoaded = true;
+        }
+    });
+    
+    // Close modal - button click
+    closeBtn.addEventListener('click', () => {
+        closeModal(modal);
+    });
+    
+    // Close modal - overlay click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal(modal);
+        }
+    });
+    
+    // Note: Escape key handling is consolidated in initGlobalKeyboardHandler()
+}
+
+async function loadLicense(container) {
+    try {
+        // Load both license files in parallel
+        const [mitResponse, apacheResponse] = await Promise.all([
+            fetch('wasm/LICENSE-MIT'),
+            fetch('wasm/LICENSE-APACHE')
+        ]);
+        
+        if (!mitResponse.ok) throw new Error(`Failed to load MIT license: ${mitResponse.status}`);
+        if (!apacheResponse.ok) throw new Error(`Failed to load Apache license: ${apacheResponse.status}`);
+        
+        const mitLicense = await mitResponse.text();
+        const apacheLicense = await apacheResponse.text();
+        
+        // Build the license content with both licenses
+        const licenseContent = `
+# License Information
+
+This software is dual-licensed under the MIT License and Apache License 2.0. You may choose either license.
+
+---
+
+## MIT License
+
+\`\`\`
+${mitLicense}
+\`\`\`
+
+---
+
+## Apache License 2.0
+
+\`\`\`
+${apacheLicense}
+\`\`\`
+`;
+        
+        renderMarkdownToContainer(licenseContent, container);
+    } catch (error) {
+        console.error('Error loading license:', error);
+        container.innerHTML = createErrorMessage({
+            title: 'Unable to Load License Information',
+            message: 'Please ensure the license files are in the wasm directory.',
+            link: { href: 'wasm/LICENSE-MIT', text: 'Try opening LICENSE-MIT directly' }
+        });
+    }
 }
 
 async function loadReadme(container) {
@@ -1009,8 +1104,10 @@ function toggleReportButton(show) {
 function initConversionReportModal() {
     const reportBtn = conversionReportBtn;
     const modal = document.getElementById('conversionReportModal');
+    const modalInner = modal ? modal.querySelector('.modal') : null;
     const closeBtn = document.getElementById('closeReportModal');
     const modalContent = document.getElementById('reportModalContent');
+    const expandBtn = document.getElementById('expandReportBtn');
     
     if (!modal || !closeBtn || !modalContent) {
         console.warn('Conversion report modal elements not found');
@@ -1033,8 +1130,15 @@ function initConversionReportModal() {
     
     // Close modal - button click
     closeBtn.addEventListener('click', () => {
-        closeModal(modal);
+        closeReportModal(modal, modalInner, expandBtn);
     });
+    
+    // Expand/collapse modal - button click
+    if (expandBtn && modalInner) {
+        expandBtn.addEventListener('click', () => {
+            toggleReportModalExpand(modalInner, expandBtn);
+        });
+    }
     
     // Print report - button click
     const printBtn = document.getElementById('printReportBtn');
@@ -1047,11 +1151,52 @@ function initConversionReportModal() {
     // Close modal - overlay click
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-            closeModal(modal);
+            closeReportModal(modal, modalInner, expandBtn);
         }
     });
     
     // Note: Escape key handling is consolidated in initGlobalKeyboardHandler()
+}
+
+/**
+ * Toggle report modal expand/collapse state
+ * @param {HTMLElement} modalInner - The inner modal element
+ * @param {HTMLElement} expandBtn - The expand button element
+ */
+function toggleReportModalExpand(modalInner, expandBtn) {
+    if (!modalInner || !expandBtn) return;
+    
+    const isExpanded = modalInner.classList.contains('expanded');
+    
+    if (isExpanded) {
+        // Collapse
+        modalInner.classList.remove('expanded');
+        expandBtn.classList.remove('expanded');
+        expandBtn.title = 'Expand';
+    } else {
+        // Expand
+        modalInner.classList.add('expanded');
+        expandBtn.classList.add('expanded');
+        expandBtn.title = 'Collapse';
+    }
+}
+
+/**
+ * Close report modal and reset expand state
+ * @param {HTMLElement} modal - The modal overlay element
+ * @param {HTMLElement} modalInner - The inner modal element
+ * @param {HTMLElement} expandBtn - The expand button element
+ */
+function closeReportModal(modal, modalInner, expandBtn) {
+    // Reset expand state before closing
+    if (modalInner) {
+        modalInner.classList.remove('expanded');
+    }
+    if (expandBtn) {
+        expandBtn.classList.remove('expanded');
+        expandBtn.title = 'Expand';
+    }
+    closeModal(modal);
 }
 
 /**
@@ -1446,9 +1591,17 @@ function handleEscapeKey() {
         return;
     }
     
+    const licenseModal = document.getElementById('licenseModal');
+    if (licenseModal && licenseModal.classList.contains('active')) {
+        closeModal(licenseModal);
+        return;
+    }
+    
     const conversionReportModal = document.getElementById('conversionReportModal');
     if (conversionReportModal && conversionReportModal.classList.contains('active')) {
-        closeModal(conversionReportModal);
+        const modalInner = conversionReportModal.querySelector('.modal');
+        const expandBtn = document.getElementById('expandReportBtn');
+        closeReportModal(conversionReportModal, modalInner, expandBtn);
         return;
     }
     

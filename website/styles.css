@@ -851,6 +851,17 @@ footer {
     color: var(--border);
 }
 
+.footer-link {
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+    color: var(--accent-primary);
+    text-decoration: underline;
+}
+
 /* ===== Toast ===== */
 .toast {
     position: fixed;
@@ -1022,6 +1033,33 @@ footer {
 .modal-action-btn:focus {
     outline: none;
     box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+/* Modal action button icon toggle for expand/collapse */
+.modal-action-btn .icon-collapse {
+    display: none;
+}
+
+.modal-action-btn.expanded .icon-expand {
+    display: none;
+}
+
+.modal-action-btn.expanded .icon-collapse {
+    display: block;
+}
+
+/* Expanded Modal State */
+.modal.expanded {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    margin: 0;
+}
+
+.modal.expanded .modal-content {
+    max-height: calc(100vh - 70px);
 }
 
 .modal-content {
