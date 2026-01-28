@@ -317,7 +317,11 @@ Rules:
 
 ### Agent Type Detection
 
-The `agent_type` is automatically determined by analyzing the input data for keywords:
+The `agent_type` is automatically determined using a priority-based approach:
+
+**Priority Order**:
+1. **Explicit type in name/label/description**: If the agent name, label, or description contains "service agent" or "service_agent", it's classified as `AgentforceServiceAgent`. If it contains "employee agent" or "employee_agent", it's classified as `AgentforceEmployeeAgent`.
+2. **Keyword detection**: If no explicit type is found, keywords are searched in other fields.
 
 | Agent Type | Detection Keywords |
 |------------|-------------------|
@@ -328,6 +332,9 @@ The `agent_type` is automatically determined by analyzing the input data for key
 - `plannerRole` and `plannerCompany`
 - `name`, `label`, and `description`
 - Plugin/topic names, labels, descriptions, and scopes
+
+**NOT Searched** (intentionally excluded):
+- Function `source` fields (may contain template references like "EmployeeCopilot__" that don't reflect the agent's actual purpose)
 
 ### Language Section
 - `default_locale` ← `locale` (default: "en_US")

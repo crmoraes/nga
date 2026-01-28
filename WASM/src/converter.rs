@@ -36,8 +36,35 @@ static VAR_REF_PATTERN_5: Lazy<Regex> = Lazy::new(|| {
 
 /// Detect the agent type based on input data
 /// Returns "AgentforceEmployeeAgent" or "AgentforceServiceAgent"
+/// 
+/// Priority order:
+/// 1. Explicit "service agent" or "employee agent" in developer_name (derived from name) or description
+/// 2. Keyword detection in other fields (planner role, company, plugins, topics)
+/// 
+/// NOTE: Function source fields are intentionally NOT checked, as they may contain
+/// template references (like "EmployeeCopilot__") that don't reflect the agent's actual purpose.
 fn detect_agent_type(input: &AgentforceInput) -> String {
-    // Keywords that suggest an Employee Agent
+    // First, check developer_name (from name) and description for explicit agent type indicators
+    // This takes priority over keyword detection in other fields
+    let name_lower = input.name.as_ref().map(|s| s.to_lowercase()).unwrap_or_default();
+    let label_lower = input.label.as_ref().map(|s| s.to_lowercase()).unwrap_or_default();
+    let desc_lower = input.description.as_ref().map(|s| s.to_lowercase()).unwrap_or_default();
+    
+    // If name, label, or description explicitly contains "service agent" or "service_agent", it's a Service Agent
+    // Check this FIRST to prevent false positives from template names in other fields
+    if name_lower.contains("service_agent") || name_lower.contains("service agent") ||
+       label_lower.contains("service agent") || label_lower.contains("service_agent") ||
+       desc_lower.contains("service agent") || desc_lower.contains("service_agent") {
+        return "AgentforceServiceAgent".to_string();
+    }
+    
+    // If name, label, or description explicitly contains "employee agent" or "employee_agent", it's an Employee Agent
+    if name_lower.contains("employee_agent") || name_lower.contains("employee agent") ||
+       label_lower.contains("employee agent") || label_lower.contains("employee_agent") {
+        return "AgentforceEmployeeAgent".to_string();
+    }
+    
+    // Keywords that suggest an Employee Agent (for fallback detection)
     let employee_keywords = [
         "employee", "internal", "hr", "human resources", "staff", 
         "workforce", "onboarding", "payroll", "benefits", "pto",
@@ -45,7 +72,9 @@ fn detect_agent_type(input: &AgentforceInput) -> String {
         "helpdesk", "intranet", "colleague", "team member"
     ];
     
-    // Collect all text content to search for keywords
+    // Collect text content to search for keywords
+    // NOTE: We intentionally do NOT include function sources here, as they may contain
+    // template names (like "EmployeeCopilot__") that don't reflect the agent's actual purpose
     let mut search_text = String::new();
     
     // Check planner role
@@ -60,23 +89,18 @@ fn detect_agent_type(input: &AgentforceInput) -> String {
         search_text.push(' ');
     }
     
-    // Check description
-    if let Some(desc) = &input.description {
-        search_text.push_str(&desc.to_lowercase());
-        search_text.push(' ');
-    }
+    // Add description (already lowercased above)
+    search_text.push_str(&desc_lower);
+    search_text.push(' ');
     
-    // Check agent name and label
-    if let Some(name) = &input.name {
-        search_text.push_str(&name.to_lowercase());
-        search_text.push(' ');
-    }
-    if let Some(label) = &input.label {
-        search_text.push_str(&label.to_lowercase());
-        search_text.push(' ');
-    }
+    // Add agent name and label (already lowercased above)
+    search_text.push_str(&name_lower);
+    search_text.push(' ');
+    search_text.push_str(&label_lower);
+    search_text.push(' ');
     
     // Check plugins (topics) for employee-related content
+    // NOTE: Only check name, label, description, and scope - NOT function sources
     if let Some(plugins) = &input.plugins {
         for plugin in plugins {
             search_text.push_str(&plugin.name.to_lowercase());
@@ -2057,5 +2081,84 @@ mod tests {
         
         let agent_type = detect_agent_type(&input);
         assert_eq!(agent_type, "AgentforceEmployeeAgent", "Should detect EmployeeAgent from PTO plugin");
+    }
+
+    #[test]
+    fn test_detect_agent_type_service_agent_name_takes_priority() {
+        // An agent named "Service Agent" should be ServiceAgent even if employee keywords
+        // appear elsewhere (like in function source fields which we don't check)
+        let input = AgentforceInput {
+            id: Some("test_id".to_string()),
+            name: Some("Agentforce_Service_Agent".to_string()),
+            label: Some("Agentforce Service Agent".to_string()),
+            description: Some("Deliver personalized customer interactions".to_string()),
+            planner_role: Some("You are a Service Agent".to_string()),
+            planner_company: None,
+            planner_tone_type: None,
+            locale: None,
+            secondary_locales: None,
+            welcome_message: None,
+            welcome_message_alt: None,
+            user_location: None,
+            voice_config: None,
+            plugins: None,
+            topics: None,
+            variables: None,
+        };
+        
+        let agent_type = detect_agent_type(&input);
+        assert_eq!(agent_type, "AgentforceServiceAgent", "Service Agent name should take priority");
+    }
+
+    #[test]
+    fn test_detect_agent_type_service_agent_in_description_takes_priority() {
+        // If description explicitly says "service agent", should be ServiceAgent
+        let input = AgentforceInput {
+            id: Some("test_id".to_string()),
+            name: Some("My_Agent".to_string()),
+            label: None,
+            description: Some("This is a service agent that helps with customer support".to_string()),
+            planner_role: None,
+            planner_company: None,
+            planner_tone_type: None,
+            locale: None,
+            secondary_locales: None,
+            welcome_message: None,
+            welcome_message_alt: None,
+            user_location: None,
+            voice_config: None,
+            plugins: None,
+            topics: None,
+            variables: None,
+        };
+        
+        let agent_type = detect_agent_type(&input);
+        assert_eq!(agent_type, "AgentforceServiceAgent", "Service agent in description should take priority");
+    }
+
+    #[test]
+    fn test_detect_agent_type_employee_agent_in_name_takes_priority() {
+        // If name explicitly says "employee agent", should be EmployeeAgent
+        let input = AgentforceInput {
+            id: Some("test_id".to_string()),
+            name: Some("My_Employee_Agent".to_string()),
+            label: Some("My Employee Agent".to_string()),
+            description: None,
+            planner_role: None,
+            planner_company: None,
+            planner_tone_type: None,
+            locale: None,
+            secondary_locales: None,
+            welcome_message: None,
+            welcome_message_alt: None,
+            user_location: None,
+            voice_config: None,
+            plugins: None,
+            topics: None,
+            variables: None,
+        };
+        
+        let agent_type = detect_agent_type(&input);
+        assert_eq!(agent_type, "AgentforceEmployeeAgent", "Employee agent in name should be detected");
     }
 }
