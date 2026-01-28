@@ -188,6 +188,7 @@ pub struct ConfigSection {
     pub default_agent_user: String,
     pub agent_label: String,
     pub developer_name: String,
+    pub agent_type: String,
     pub description: String,
 }
 

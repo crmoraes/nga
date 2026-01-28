@@ -535,6 +535,14 @@ fn generate_analysis_notes(
 ) -> Vec<String> {
     let mut notes = Vec::new();
     
+    // Agent type auto-detection note (always shown)
+    notes.push("- ⚠️ **AGENT TYPE:** The `agent_type` field was **automatically generated** based on keyword detection.".to_string());
+    notes.push("  - The converter analyzed agent data for employee-related keywords (e.g., employee, HR, internal, payroll, benefits, PTO).".to_string());
+    notes.push("  - If employee keywords were found, `agent_type` is set to `AgentforceEmployeeAgent`.".to_string());
+    notes.push("  - Otherwise, it defaults to `AgentforceServiceAgent`.".to_string());
+    notes.push("  - **Please review and manually update** the `agent_type` value if the auto-detection is incorrect.".to_string());
+    notes.push(String::new());
+    
     // Check for missing descriptions in topics
     let topics_without_desc = analyze_topics_missing_descriptions(topics);
     if !topics_without_desc.is_empty() {

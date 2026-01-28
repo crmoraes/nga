@@ -34,6 +34,97 @@ static VAR_REF_PATTERN_5: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"@variables\.([A-Za-z_][A-Za-z0-9_]*)").expect("Invalid regex pattern for VAR_REF_PATTERN_5")
 });
 
+/// Detect the agent type based on input data
+/// Returns "AgentforceEmployeeAgent" or "AgentforceServiceAgent"
+fn detect_agent_type(input: &AgentforceInput) -> String {
+    // Keywords that suggest an Employee Agent
+    let employee_keywords = [
+        "employee", "internal", "hr", "human resources", "staff", 
+        "workforce", "onboarding", "payroll", "benefits", "pto",
+        "time off", "leave", "expense", "travel", "it support",
+        "helpdesk", "intranet", "colleague", "team member"
+    ];
+    
+    // Collect all text content to search for keywords
+    let mut search_text = String::new();
+    
+    // Check planner role
+    if let Some(role) = &input.planner_role {
+        search_text.push_str(&role.to_lowercase());
+        search_text.push(' ');
+    }
+    
+    // Check planner company context
+    if let Some(company) = &input.planner_company {
+        search_text.push_str(&company.to_lowercase());
+        search_text.push(' ');
+    }
+    
+    // Check description
+    if let Some(desc) = &input.description {
+        search_text.push_str(&desc.to_lowercase());
+        search_text.push(' ');
+    }
+    
+    // Check agent name and label
+    if let Some(name) = &input.name {
+        search_text.push_str(&name.to_lowercase());
+        search_text.push(' ');
+    }
+    if let Some(label) = &input.label {
+        search_text.push_str(&label.to_lowercase());
+        search_text.push(' ');
+    }
+    
+    // Check plugins (topics) for employee-related content
+    if let Some(plugins) = &input.plugins {
+        for plugin in plugins {
+            search_text.push_str(&plugin.name.to_lowercase());
+            search_text.push(' ');
+            if let Some(label) = &plugin.label {
+                search_text.push_str(&label.to_lowercase());
+                search_text.push(' ');
+            }
+            if let Some(desc) = &plugin.description {
+                search_text.push_str(&desc.to_lowercase());
+                search_text.push(' ');
+            }
+            if let Some(scope) = &plugin.scope {
+                search_text.push_str(&scope.to_lowercase());
+                search_text.push(' ');
+            }
+        }
+    }
+    
+    // Check topics for employee-related content
+    if let Some(topics) = &input.topics {
+        for topic in topics {
+            if let Some(name) = &topic.name {
+                search_text.push_str(&name.to_lowercase());
+                search_text.push(' ');
+            }
+            if let Some(label) = &topic.label {
+                search_text.push_str(&label.to_lowercase());
+                search_text.push(' ');
+            }
+            if let Some(desc) = &topic.description {
+                search_text.push_str(&desc.to_lowercase());
+                search_text.push(' ');
+            }
+        }
+    }
+    
+    // Check if any employee keywords are found
+    for keyword in &employee_keywords {
+        if search_text.contains(keyword) {
+            return "AgentforceEmployeeAgent".to_string();
+        }
+    }
+    
+    // Default to Service Agent
+    "AgentforceServiceAgent".to_string()
+}
+
 /// Detect input format and convert accordingly
 pub fn detect_and_convert(input: &AgentforceInput, rules: &Option<ConversionRules>) -> Result<NGAOutput, String> {
     // Check if it's a Salesforce Agentforce export (has plugins array)
@@ -81,6 +172,7 @@ pub fn convert_agentforce_format(input: &AgentforceInput, rules: &Option<Convers
                     .or(input.label.as_deref())
                     .unwrap_or("Agent")
             ),
+            agent_type: detect_agent_type(input),
             description: clean_description(input.description.as_deref()),
         },
         variables: extract_variables(input, rules),
@@ -864,6 +956,7 @@ pub fn convert_simple_format(
                     .or(input.label.as_deref())
                     .unwrap_or("Agent")
             ),
+            agent_type: detect_agent_type(input),
             description: input
                 .description.clone()
                 .unwrap_or_else(|| "Service Agent".to_string()),
@@ -1108,6 +1201,7 @@ pub fn convert_generic_format(
             developer_name: generate_developer_name(
                 input.name.as_deref().unwrap_or("Agent")
             ),
+            agent_type: detect_agent_type(input),
             description: input
                 .description.clone()
                 .unwrap_or_else(|| "Service Agent".to_string()),
@@ -1821,5 +1915,147 @@ mod tests {
         
         // Should include inputs that don't have is_user_input specified (defaults to true)
         assert!(inputs.contains_key("unspecifiedInput"), "Should contain input without is_user_input (defaults to true)");
+    }
+
+    #[test]
+    fn test_detect_agent_type_defaults_to_service_agent() {
+        // An agent without employee-related keywords should default to ServiceAgent
+        let input = AgentforceInput {
+            id: Some("test_id".to_string()),
+            name: Some("Customer_Support_Agent".to_string()),
+            label: Some("Customer Support Agent".to_string()),
+            description: Some("Handles customer inquiries and support requests".to_string()),
+            planner_role: Some("You are a customer support agent.".to_string()),
+            planner_company: None,
+            planner_tone_type: None,
+            locale: None,
+            secondary_locales: None,
+            welcome_message: None,
+            welcome_message_alt: None,
+            user_location: None,
+            voice_config: None,
+            plugins: None,
+            topics: None,
+            variables: None,
+        };
+        
+        let agent_type = detect_agent_type(&input);
+        assert_eq!(agent_type, "AgentforceServiceAgent", "Should default to AgentforceServiceAgent");
+    }
+
+    #[test]
+    fn test_detect_agent_type_detects_employee_agent_from_name() {
+        // An agent with "employee" in the name should be detected as EmployeeAgent
+        let input = AgentforceInput {
+            id: Some("test_id".to_string()),
+            name: Some("Employee_Portal_Agent".to_string()),
+            label: Some("Employee Portal Agent".to_string()),
+            description: None,
+            planner_role: None,
+            planner_company: None,
+            planner_tone_type: None,
+            locale: None,
+            secondary_locales: None,
+            welcome_message: None,
+            welcome_message_alt: None,
+            user_location: None,
+            voice_config: None,
+            plugins: None,
+            topics: None,
+            variables: None,
+        };
+        
+        let agent_type = detect_agent_type(&input);
+        assert_eq!(agent_type, "AgentforceEmployeeAgent", "Should detect EmployeeAgent from name");
+    }
+
+    #[test]
+    fn test_detect_agent_type_detects_employee_agent_from_description() {
+        // An agent with HR-related description should be detected as EmployeeAgent
+        let input = AgentforceInput {
+            id: Some("test_id".to_string()),
+            name: Some("HR_Assistant".to_string()),
+            label: None,
+            description: Some("Assists with human resources inquiries and benefits questions".to_string()),
+            planner_role: None,
+            planner_company: None,
+            planner_tone_type: None,
+            locale: None,
+            secondary_locales: None,
+            welcome_message: None,
+            welcome_message_alt: None,
+            user_location: None,
+            voice_config: None,
+            plugins: None,
+            topics: None,
+            variables: None,
+        };
+        
+        let agent_type = detect_agent_type(&input);
+        assert_eq!(agent_type, "AgentforceEmployeeAgent", "Should detect EmployeeAgent from HR description");
+    }
+
+    #[test]
+    fn test_detect_agent_type_detects_employee_agent_from_planner_role() {
+        // An agent with internal/employee context in planner role
+        let input = AgentforceInput {
+            id: Some("test_id".to_string()),
+            name: Some("IT_Support_Bot".to_string()),
+            label: None,
+            description: None,
+            planner_role: Some("You help internal staff with IT support requests.".to_string()),
+            planner_company: None,
+            planner_tone_type: None,
+            locale: None,
+            secondary_locales: None,
+            welcome_message: None,
+            welcome_message_alt: None,
+            user_location: None,
+            voice_config: None,
+            plugins: None,
+            topics: None,
+            variables: None,
+        };
+        
+        let agent_type = detect_agent_type(&input);
+        assert_eq!(agent_type, "AgentforceEmployeeAgent", "Should detect EmployeeAgent from internal staff context");
+    }
+
+    #[test]
+    fn test_detect_agent_type_detects_employee_agent_from_plugin() {
+        // An agent with employee-related plugins
+        let input = AgentforceInput {
+            id: Some("test_id".to_string()),
+            name: Some("Workplace_Agent".to_string()),
+            label: None,
+            description: None,
+            planner_role: None,
+            planner_company: None,
+            planner_tone_type: None,
+            locale: None,
+            secondary_locales: None,
+            welcome_message: None,
+            welcome_message_alt: None,
+            user_location: None,
+            voice_config: None,
+            plugins: Some(vec![
+                Plugin {
+                    name: "PTO_Management".to_string(),
+                    local_dev_name: None,
+                    label: Some("PTO Management".to_string()),
+                    description: Some("Helps employees manage their time off requests".to_string()),
+                    scope: None,
+                    plugin_type: Some("TOPIC".to_string()),
+                    instruction_definitions: None,
+                    functions: None,
+                    can_escalate: None,
+                },
+            ]),
+            topics: None,
+            variables: None,
+        };
+        
+        let agent_type = detect_agent_type(&input);
+        assert_eq!(agent_type, "AgentforceEmployeeAgent", "Should detect EmployeeAgent from PTO plugin");
     }
 }

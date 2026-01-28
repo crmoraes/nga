@@ -210,6 +210,7 @@ Basic key-value pairs will generate a default agent structure.
 │  2. CONFIG SECTION                                              │
 │     • name, label, description → agent metadata                 │
 │     • Generate developer_name (sanitized)                       │
+│     • Auto-detect agent_type (Employee/Service)                 │
 │                                                                 │
 │  3. VARIABLES SECTION                                           │
 │     • Extract from function inputs → mutable variables          │
@@ -265,6 +266,7 @@ Basic key-value pairs will generate a default agent structure.
 | `plannerToneType` | `system.instructions` | CASUAL, FORMAL, NEUTRAL |
 | `name` | `config.developer_name` | Sanitized to uppercase with underscores |
 | `label` | `config.agent_label` | Human-readable name |
+| (auto-detected) | `config.agent_type` | "AgentforceEmployeeAgent" or "AgentforceServiceAgent" |
 | `description` | `config.description` | Markdown tags removed |
 | `locale` | `language.default_locale` | e.g., "en_US" |
 | `secondaryLocales` | `language.additional_locales` | Comma-separated |
@@ -301,6 +303,7 @@ Basic key-value pairs will generate a default agent structure.
 
 | Generated Element | Condition |
 |-------------------|-----------|
+| `config.agent_type` | Auto-detected based on keywords in agent data (see Agent Type Detection below) |
 | Reasoning action references | Generated from functions with `@actions.ActionName` syntax |
 | `with` parameter clauses | Generated for each action input parameter |
 | Topic transitions | Added between all topics (`go_to_<topic>`) |
@@ -308,6 +311,20 @@ Basic key-value pairs will generate a default agent structure.
 | Off-topic topic | If not present in input |
 | Ambiguous question topic | If not present in input |
 | Security rules | Added to off-topic and ambiguous topics |
+
+### Agent Type Detection
+
+The `agent_type` field is automatically determined by analyzing the input data for specific keywords:
+
+| Agent Type | Detection Keywords |
+|------------|-------------------|
+| `AgentforceEmployeeAgent` | employee, internal, hr, human resources, staff, workforce, onboarding, payroll, benefits, pto, time off, leave, expense, travel, it support, helpdesk, intranet, colleague, team member |
+| `AgentforceServiceAgent` | Default (when no employee keywords found) |
+
+**Fields Searched:**
+- `plannerRole` and `plannerCompany`
+- `name`, `label`, and `description`
+- Plugin/topic names, labels, descriptions, and scopes
 
 ---
 
@@ -417,6 +434,7 @@ config:
   default_agent_user: "agentforce_service_agent@16jKc0000004Cqw.ext"
   agent_label: "Agentforce Service Agent"
   developer_name: "AGENTFORCE_SERVICE_AGENT"
+  agent_type: "AgentforceServiceAgent"
   description: "Deliver personalized customer interactions..."
 
 variables:
@@ -543,6 +561,10 @@ This section helps identify variables that were automatically converted from for
 #### 5. Other Important Notes
 
 Warnings and recommendations:
+- **Agent type auto-detection**: The `agent_type` field is automatically generated based on keyword detection in the agent data. The report will always include a note reminding you to:
+  - Review the auto-detected `agent_type` value
+  - Manually update it if the detection is incorrect
+  - Keywords checked include: employee, HR, internal, payroll, benefits, PTO, etc.
 - Topics missing descriptions
 - Topics without actions
 - Actions missing descriptions
@@ -553,7 +575,7 @@ Warnings and recommendations:
   - A table listing **Topic**, **Action**, **Type**, and **Target (Record ID)** for each affected action
   - Instructions to manually re-select the target in Agentforce Builder
 
-> **Important:** Custom actions show the target record ID (not the API name) in the converted output. You **must** manually re-select the target for each flagged action in Agentforce Builder.
+> **Important:** The `agent_type` field is auto-detected and may need manual correction. Custom actions show the target record ID (not the API name) in the converted output. You **must** manually re-select the target for each flagged action in Agentforce Builder.
 
 ### Report Format
 
@@ -945,6 +967,25 @@ The converter validates:
 ---
 
 ## Recent Updates
+
+### Version 2.4.0 - Agent Type Auto-Detection
+
+**Major Changes:**
+- ✅ **Agent Type Detection**: Automatically determines `agent_type` as either "AgentforceEmployeeAgent" or "AgentforceServiceAgent"
+- ✅ **Keyword-based Detection**: Analyzes agent data (name, description, planner role, plugins) for employee-related keywords
+- ✅ **Default to Service Agent**: Agents without employee keywords default to "AgentforceServiceAgent"
+
+**Detection Keywords for Employee Agent:**
+- employee, internal, hr, human resources, staff, workforce
+- onboarding, payroll, benefits, pto, time off, leave
+- expense, travel, it support, helpdesk, intranet
+- colleague, team member
+
+**Output Example:**
+```yaml
+config:
+  agent_type: "AgentforceEmployeeAgent"  # or "AgentforceServiceAgent"
+```
 
 ### Version 2.3.0 - Reasoning Actions Enhancement
 

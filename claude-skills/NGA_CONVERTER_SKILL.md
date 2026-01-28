@@ -61,6 +61,7 @@ config:
   default_agent_user: "..."
   agent_label: "..."
   developer_name: "..."
+  agent_type: "AgentforceEmployeeAgent or AgentforceServiceAgent"
   description: "..."
 
 variables:
@@ -310,8 +311,23 @@ Rules:
 ### Config Section
 - `agent_label` ← `label` or `name`
 - `developer_name` ← Generated from `name` (uppercase, underscores, max 80 chars)
+- `agent_type` ← Auto-detected: "AgentforceEmployeeAgent" or "AgentforceServiceAgent" (see Agent Type Detection below)
 - `description` ← `description` (cleaned of markdown tags like `#TagName#`)
 - `default_agent_user` ← `agentforce_service_agent@{id}.ext`
+
+### Agent Type Detection
+
+The `agent_type` is automatically determined by analyzing the input data for keywords:
+
+| Agent Type | Detection Keywords |
+|------------|-------------------|
+| `AgentforceEmployeeAgent` | employee, internal, hr, human resources, staff, workforce, onboarding, payroll, benefits, pto, time off, leave, expense, travel, it support, helpdesk, intranet, colleague, team member |
+| `AgentforceServiceAgent` | Default (when no employee keywords found) |
+
+**Searched Fields**:
+- `plannerRole` and `plannerCompany`
+- `name`, `label`, and `description`
+- Plugin/topic names, labels, descriptions, and scopes
 
 ### Language Section
 - `default_locale` ← `locale` (default: "en_US")
@@ -432,6 +448,7 @@ config:
   default_agent_user: "agentforce_service_agent@example.ext"
   agent_label: "Service Agent"
   developer_name: "SERVICE_AGENT"
+  agent_type: "AgentforceServiceAgent"
   description: "Handles customer support"
 
 variables:

@@ -73,6 +73,7 @@ After using the interpreter output, the following items require **manual action*
 
 | Item | What You Need to Do |
 |------|---------------------|
+| **Agent Type** | The source JSON file does not include the Agent Type. You must manually defined it in the generated YAML file either as **agent_type: "AgentforceEmployeeAgent"** or **agent_type: "AgentforceEmployeeAgent"**. |
 | **Custom Actions** | Custom actions (flow, Apex, others) will show the **target record ID** (not the API name) in the output. You must **manually re-select the target** for each action in Agentforce Builder. |
 | **Context Filters** | Context Filters are **NOT converted**. Review your original Context Filter logic and implement it using Agentforce Builder's **deterministic features** if needed. |
 | **Data Library** | A `knowledge` section is generated with empty defaults. You must **manually configure the `rag_feature_config_id`** in Agentforce Builder if your agent requires a Data Library. |

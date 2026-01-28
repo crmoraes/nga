@@ -1087,14 +1087,27 @@ function getVariableStatusSuffix() {
 
 /**
  * Toggle visibility of conversion report button
+ * When showing, adds highlighted class for attention-grabbing animation
  */
 function toggleReportButton(show) {
     if (conversionReportBtn) {
         if (show) {
             conversionReportBtn.classList.remove('hidden');
+            // Add highlighted class to draw attention to the button
+            conversionReportBtn.classList.add('highlighted');
         } else {
             conversionReportBtn.classList.add('hidden');
+            conversionReportBtn.classList.remove('highlighted');
         }
+    }
+}
+
+/**
+ * Remove highlight from report button (called when user interacts with it)
+ */
+function removeReportButtonHighlight() {
+    if (conversionReportBtn) {
+        conversionReportBtn.classList.remove('highlighted');
     }
 }
 
@@ -1121,6 +1134,9 @@ function initConversionReportModal() {
                 showToast('No conversion data available');
                 return;
             }
+            
+            // Remove highlight when user clicks the button
+            removeReportButtonHighlight();
             
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';

@@ -23,6 +23,7 @@ pub fn generate_nga_yaml(nga: &NGAOutput, rules: &Option<ConversionRules>) -> St
     output.push_str(&format!("  default_agent_user: \"{}\"\n", nga.config.default_agent_user));
     output.push_str(&format!("  agent_label: \"{}\"\n", nga.config.agent_label));
     output.push_str(&format!("  developer_name: \"{}\"\n", nga.config.developer_name));
+    output.push_str(&format!("  agent_type: \"{}\"\n", nga.config.agent_type));
     let config_desc = convert_variables_in_text(Some(&nga.config.description), rules);
     output.push_str(&format!("  description: \"{}\"\n", escape_yaml_string(&config_desc)));
     output.push('\n');
